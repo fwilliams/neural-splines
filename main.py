@@ -53,7 +53,7 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
         raise ValueError("'mode' must be one of 'direct' or 'falkon'")
 
     model.fit(x, y)
-    print(f"Fit model in {time.time() - fit_start_time} seconds")
+    print(f"Fit model in {time.time() - fit_start_time} seconds.")
     return model
 
 
@@ -73,6 +73,7 @@ def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding, dtype=tor
 
     print(f"Evaluating function on grid of size "
           f"{voxel_grid_dimensions[0]}x{voxel_grid_dimensions[1]}x{voxel_grid_dimensions[2]}...")
+    eval_start_time = time.time()
     xgrid = torch.from_numpy(
         np.stack([_.ravel() for _ in
                   np.mgrid[scaled_bbox_min[0]:scaled_bbox_max[0]:voxel_grid_dimensions[0] * 1j,
@@ -84,11 +85,15 @@ def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding, dtype=tor
     ygrid = model.predict(xgrid).reshape([voxel_grid_dimensions[0],
                                           voxel_grid_dimensions[1],
                                           voxel_grid_dimensions[2]])
+    print(f"Evaluated model in {time.time() - eval_start_time} seconds.")
 
+    print("Running marching cubes...")
+    marching_cubes_start_time = time.time()
     v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(),
                                    level=0.0, spacing=voxel_size)
     v -= input_bbox[0]
     mesh = v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64)
+    print(f"Ran marching cubes in {time.time() - eval_start_time} seconds.")
 
     return ygrid, mesh
 
