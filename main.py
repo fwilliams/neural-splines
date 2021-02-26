@@ -168,8 +168,7 @@ def main():
     print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
     model = fit_model(x_homogeneous, y, args.penalty, num_ny, mode=args.mode,
                       maxiters=args.cg_max_iters, kernel_type=args.kernel,
-                      decay=args.decay, stop_thresh=args.cg_stop_thresh,
-                      verbose=args.verbose)
+                      stop_thresh=args.cg_stop_thresh, verbose=args.verbose)
 
     # model, grid_width, input_bbox, normalized_bbox, padding
     grid, mesh = eval_grid(model, args.grid_size, bbox_original, bbox_normalized, args.scale)
