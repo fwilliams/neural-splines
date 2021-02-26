@@ -105,7 +105,7 @@ def main():
     argparser.add_argument("--num-ny", type=int, default=1024,
                            help="Number of Nyström samples for kernel ridge regression.")
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
-    argparser.add_argument("--dtype", type=)
+    argparser.add_argument("--dtype", type=str, default="float64", help="Scalar type, one of ('float32', 'float63')")
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Specifies the ratio between the diameter of the cube used for reconstruction and "
                                 "the diameter of the samples' bounding cube..")
@@ -130,7 +130,12 @@ def main():
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
     args = argparser.parse_args()
 
-    dtype = torch.float64
+    if args.dtype == 'float64':
+        dtype = torch.float64
+    elif args.dtype == 'float32':
+        dtype = torch.float32
+    else:
+        raise ValueError(f"Invalid --dtype argument, must be one of 'float32' or 'float64 but got {args.dtype}")
 
     if args.seed > 0:
         seed = args.seed
