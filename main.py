@@ -9,7 +9,6 @@ from skimage.measure import marching_cubes
 
 from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, NeuralTangentKernel, DirectKernelSolver
 from common import make_triples, load_normalized_point_cloud
-import tqdm
 
 
 def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falkon",
@@ -127,7 +126,6 @@ def main():
                            help="Maximum number of conjugate gradient iterations.")
     argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
-    argparser.add_argument("--debug-plot", action="store_true", help="Plot the input and nystrom samples")
     args = argparser.parse_args()
 
     if args.seed > 0:
