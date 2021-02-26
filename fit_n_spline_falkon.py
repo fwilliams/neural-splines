@@ -7,7 +7,7 @@ import time
 import torch
 from skimage.measure import marching_cubes
 
-from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, LaplaceKernelSphereDecay, DirectKernelSolver
+from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, DirectKernelSolver
 from common import make_triples
 import tqdm
 
@@ -31,8 +31,7 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
 
     if kernel_type == "spherical-laplace":
         if decay > 0.0:
-            print(f"Using Spherical Laplacian Kernel with decay = {decay}")
-            kernel = LaplaceKernelSphereDecay(alpha=-1.0, gamma=0.5, sigma=decay, opt=opts)
+            raise NotImplementedError("TODO: Implement arc cosine kernel with decay")
         else:
             print("Using Spherical Laplacian Kernel")
             kernel = LaplaceKernelSphere(alpha=-1.0, gamma=0.5, opt=opts)
