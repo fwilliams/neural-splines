@@ -159,6 +159,7 @@ def main():
         ny_count = num_ny
 
     x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(dtype)
+    y = y.to(dtype)
 
     # Permute to randomize nystrom samples
     # TODO: might be unnecesary but I need to check
