@@ -68,7 +68,7 @@ def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding, dtype=tor
     scaled_bbox_size = scaled_bbox_max - scaled_bbox_min
 
     # Resolution of voxel grid on which we sample the implicit on
-    voxel_grid_dimensions = np.round(grid_width * normalized_bbox_size / normalized_bbox_size.max())
+    voxel_grid_dimensions = np.round(grid_width * normalized_bbox_size / normalized_bbox_size.max()).astype(np.int)
     voxel_size = scaled_bbox_size / voxel_grid_dimensions  # Dimensions of an individual voxel
 
     print(f"Evaluating function on grid of size "
@@ -105,7 +105,7 @@ def main():
     argparser.add_argument("--num-ny", type=int, default=1024,
                            help="Number of Nyström samples for kernel ridge regression.")
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
-
+    argparser.add_argument("--dtype", type=)
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Specifies the ratio between the diameter of the cube used for reconstruction and "
                                 "the diameter of the samples' bounding cube..")
