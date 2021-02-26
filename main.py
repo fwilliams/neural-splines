@@ -81,9 +81,9 @@ def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding, dtype=tor
                  axis=-1))
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
-    ygrid = model.predict(xgrid).reshape(voxel_grid_dimensions[0],
-                                         voxel_grid_dimensions[1],
-                                         voxel_grid_dimensions[2])
+    ygrid = model.predict(xgrid).reshape([voxel_grid_dimensions[0],
+                                          voxel_grid_dimensions[1],
+                                          voxel_grid_dimensions[2]])
 
     v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(),
                                    level=0.0, spacing=voxel_size)
