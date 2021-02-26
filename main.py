@@ -22,11 +22,13 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
 
     opts = falkon.FalkonOptions()
     opts.min_cuda_pc_size_64 = 1
+    opts.min_cuda_pc_size_32 = 1
     opts.cg_tolerance = stop_thresh
     # opts.cg_full_gradient_every = 10
     opts.debug = verbose
     opts.use_cpu = False
     opts.min_cuda_iter_size_64 = 1
+    opts.min_cuda_iter_size_32 = 1
 
     if kernel_type == "spherical-laplace":
         print("Using Spherical Laplacian Kernel")
@@ -55,7 +57,7 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
     return model
 
 
-def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding):
+def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding, dtype=torch.float64):
     normalized_bbox_origin, normalized_bbox_size = normalized_bbox
 
     normalized_bbox_diameter = np.linalg.norm(normalized_bbox_size)
@@ -77,7 +79,7 @@ def eval_grid(model, grid_width, input_bbox, normalized_bbox, padding):
                            scaled_bbox_min[1]:scaled_bbox_max[1]:voxel_grid_dimensions[1] * 1j,
                            scaled_bbox_min[2]:scaled_bbox_max[2]:voxel_grid_dimensions[2] * 1j]],
                  axis=-1))
-    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
+    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
     ygrid = model.predict(xgrid).reshape(voxel_grid_dimensions[0],
                                          voxel_grid_dimensions[1],
@@ -128,6 +130,8 @@ def main():
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
     args = argparser.parse_args()
 
+    dtype = torch.float64
+
     if args.seed > 0:
         seed = args.seed
     else:
@@ -147,14 +151,14 @@ def main():
         seed = args.seed if args.seed > 0 else 0
         ny_idx = pcu.prune_point_cloud_poisson_disk(x.numpy(), args.num_ny, random_seed=seed)
         x_ny = x[ny_idx]
-        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1).to(torch.float64)
+        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1).to(dtype)
         num_ny = x_ny
         ny_count = x_ny.shape[0]
     else:
         num_ny = args.num_ny if args.num_ny > 0 else x.shape[0]
         ny_count = num_ny
 
-    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(torch.float64)
+    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(dtype)
 
     # Permute to randomize nystrom samples
     # TODO: might be unnecesary but I need to check
