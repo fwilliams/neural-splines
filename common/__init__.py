@@ -49,12 +49,12 @@ def make_triples(x, n, eps):
         x_triples = torch.cat([x, x_in, x_out], dim=0)
         occ_triples = torch.cat([torch.zeros(x.shape[0]),
                                  -torch.ones(x.shape[0]),
-                                 torch.ones(x.shape[0])]) * eps
+                                 torch.ones(x.shape[0])]).to(x) * eps
     else:
         x_triples = np.concatenate([x, x_in, x_out], axis=0)
         occ_triples = np.concatenate([torch.zeros(x.shape[0]),
                                      -torch.ones(x.shape[0]),
-                                     torch.ones(x.shape[0])]) * eps
+                                     torch.ones(x.shape[0])]).astype(x.dtype) * eps
     return x_triples, occ_triples
 
 
