@@ -99,8 +99,8 @@ def eval_grid2(model, grid_width, scale, bbox):
     scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
 
     plt_range_max, plt_range_min = scaled_bb_min, scaled_bb_min + scaled_bb_size
-    grid_size = np.round(scaled_bb_size * grid_width).astype(np.int64)
-    print(plt_range_min, plt_range_min)
+    grid_size = np.round(bb_size * grid_width).astype(np.int64)
+    print(plt_range_min, plt_range_max)
 
     print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
     xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:grid_size[0] * 1j,
