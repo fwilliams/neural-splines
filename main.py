@@ -211,7 +211,7 @@ def main():
         print(torch.cuda.memory_summary('cuda'))
 
     # grid = eval_grid(mdl, grid_size=grid_size, plot_range=plot_range, nchunks=1)
-    grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized)
+    grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized, bbox_input)
     # if isinstance(plot_range, tuple):
     #     plot_bb = plot_range[1] - plot_range[0]
     #     grid_spacing = plot_bb / (grid_size.astype(np.float64) - 1.0)
