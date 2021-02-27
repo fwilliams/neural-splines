@@ -8,8 +8,7 @@ import torch
 from skimage.measure import marching_cubes
 
 from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, DirectKernelSolver
-from common import make_triples, load_normalized_point_cloud
-import tqdm
+from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
 def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falkon", maxiters=20, decay=-1.0,
@@ -60,45 +59,7 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
     return model
 
 
-def eval_grid(model, grid_size, plot_range, nchunks=1):
-    if isinstance(grid_size, float) or isinstance(grid_size, int):
-        grid_size = [grid_size] * 3
-    if isinstance(plot_range, float):
-        prmin, prmax = [-plot_range] * 3, [plot_range] * 3
-    else:
-        prmin, prmax = plot_range
-    print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
-    xgrid = np.stack([_.ravel() for _ in np.mgrid[prmin[0]:prmax[0]:grid_size[0] * 1j,
-                                                  prmin[1]:prmax[1]:grid_size[1] * 1j,
-                                                  prmin[2]:prmax[2]:grid_size[2] * 1j]],
-                     axis=-1)
-    xgrid = torch.from_numpy(xgrid)
-    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
-
-    if nchunks > 1:
-        ygrid = []
-        chunk_size = int(np.ceil(xgrid.shape[0] / nchunks))
-        for i in tqdm.tqdm(range(nchunks)):
-            ibeg, iend = i * chunk_size, (i + 1) * chunk_size
-            ygrid.append(model.predict(xgrid[ibeg:iend]))
-
-        ygrid = torch.cat(ygrid).reshape(grid_size[0], grid_size[1], grid_size[2])
-    else:
-        ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
-    return ygrid
-
-
-def scale_bounding_box_diameter(bbox, scale):
-    bb_min, bb_size = bbox
-    bb_diameter = np.linalg.norm(bb_size)
-    bb_unit_dir = bb_size / bb_diameter
-    scaled_bb_size = bb_size * scale
-    scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
-    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
-    return scaled_bb_min, scaled_bb_size
-
-
-def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input):
+def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input, dtype=torch.float64):
     scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, scale)
     scaled_bbi_min, scaled_bbi_size = scale_bounding_box_diameter(bbox_input, scale)
 
@@ -110,8 +71,7 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
                                                   plt_range_min[1]:plt_range_max[1]:grid_size[1] * 1j,
                                                   plt_range_min[2]:plt_range_max[2]:grid_size[2] * 1j]],
                      axis=-1)
-    xgrid = torch.from_numpy(xgrid)
-    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
+    xgrid = torch.cat([torch.from_numpy(xgrid), torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
 
@@ -128,48 +88,48 @@ def main():
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
     argparser.add_argument("--out", type=str, default="recon.ply", help="Path to file to save reconstructed mesh in.")
 
-    argparser.add_argument("--kernel", type=str, default="spherical-laplace",
-                           help="Which kernel to use. Must be one of 'spherical-laplace' or 'arccosine'.")
+    argparser.add_argument("--eps", type=float, default=0.01,
+                           help="Amount to perturb input points around surface to construct occupancy point cloud. "
+                                "A reasonable value for this is half the minimum distance between any two points.")
     argparser.add_argument("--penalty", type=float, default=0.0,
                            help="Regularization penalty for kernel ridge regression.")
     argparser.add_argument("--num-ny", type=int, default=-1,
                            help="Number of Nyström samples for kernel ridge regression. If negative, don't use "
                                 "Nyström sampling")
+
+    argparser.add_argument("--dtype", type=str, default="float64",
+                           help="Scalar type of the data. Must be one of 'float32' or 'float64'")
+
+    argparser.add_argument("--kernel", type=str, default="spherical-laplace",
+                           help="Which kernel to use. Must be one of 'spherical-laplace' or 'arccosine'.")
+
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
 
-    argparser.add_argument("--padding", type=float, default=np.inf,
+    argparser.add_argument("--scale", type=float, default=1.1,
                            help="If set to a positive value, will normalize the input point cloud so that it is "
                                 "centered in a bounding cube of shape [-l, l]^ where l = plot_range - padding. "
                                 "Here plot_range is the --plot-range argument and padding is this argument.")
-    argparser.add_argument("--plot-range", "-pr", type=float, default=1.0,
-                           help="Domain on which to sample the reconstructed function when constructing the "
-                                "output voxel grid. The reconstructed function gets sampled on [-pr, pr]^3 where pr is "
-                                "the `--plot-range` argument.")
-    argparser.add_argument("--grid-size", "-g", type=int, default=128,
-                           help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
-                                "function on a G x G x G voxel grid.")
+
     argparser.add_argument("--save-grid", action="store_true",
                            help="If set, save a .npy file with the function evaluated on a voxel grid of "
                                 "shape GxGxG where G is the --grid-width argument")
     argparser.add_argument("--save-points", action="store_true", help="Save input points and Nystrom samples")
 
-    argparser.add_argument("--mode", type=str, default="falkon",
-                           help="Type of solver to use. Must be either 'falkon' for Falkon conjugate gradient or "
-                                "'direct' to use a dense LU factorization")
-    argparser.add_argument("--eps", type=float, default=0.01,
-                           help="Amount to perturb input points around surface to construct occupancy point cloud. "
-                                "A reasonable value for this is half the minimum distance between any two points.")
     argparser.add_argument("--lloyd-nystrom", action="store_true",
                            help="Generate Nystrom samples by doing lloyd relaxation on the input mesh")
-    argparser.add_argument("--decay", type=float, default=-1.0,
-                           help="If set to a positive value, modulate the kernel with the Gaussian kernel with "
-                                "standard deviation equal to this argument.")
+
     argparser.add_argument("--cg-max-iters", type=int, default=20,
                            help="Maximum number of conjugate gradient iterations.")
     argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
-    argparser.add_argument("--debug-print-mem", action="store_true", help="Print memory stats")
     args = argparser.parse_args()
+
+    if args.dtype == "float64":
+        dtype = torch.float64
+    elif args.dtype == "float32":
+        dtype = torch.float32
+    else:
+        raise ValueError(f"invalid --dtype argument. Must be one of 'float32' or 'float64' but got {args.dtype}")
 
     if args.seed > 0:
         seed = args.seed
@@ -181,14 +141,13 @@ def main():
 
     x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud)
     x, y = make_triples(x, n, args.eps)
-    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(torch.float64)
+    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(dtype)
     y = y.to(x)
 
     if args.lloyd_nystrom:
         seed = args.seed if args.seed > 0 else 0
         ny_idx = pcu.prune_point_cloud_poisson_disk(x.numpy(), args.num_ny, random_seed=seed)
-        x_ny = x[ny_idx]
-        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1).to(torch.float64)
+        x_ny = x_homogeneous[ny_idx]
         num_ny = x_ny
         ny_count = x_ny.shape[0]
     else:
@@ -200,11 +159,8 @@ def main():
     mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, decay=args.decay, stop_thresh=args.cg_stop_thresh,
                     verbose=args.verbose)
-    if args.debug_print_mem:
-        print("CUDA MEMORY SUMMARY")
-        print(torch.cuda.memory_summary('cuda'))
+    grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, args.scale, bbox_normalized, bbox_input, dtype=dtype)
 
-    grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized, bbox_input)
     pcu.write_ply(args.out, *mesh)
     if args.save_grid:
         np.savez(args.out + ".grid", grid=grid.detach().cpu().numpy())
@@ -216,7 +172,7 @@ def main():
             x_ny = x_ny[:, :3]
         np.savez(args.out + ".pts",
                  x=x.detach().cpu().numpy(),
-                 y_ny=y.detach().cpu().numpy(),
+                 y=y.detach().cpu().numpy(),
                  x_ny=x_ny.detach().cpu().numpy())
 
 

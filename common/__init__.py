@@ -87,3 +87,13 @@ def load_normalized_point_cloud(filename, min_norm_normal=1e-5):
 
     # Return points, normals, and transform information to denormalize points
     return x, n, (bbox_origin, bbox_size), (n_bbox_origin, n_bbox_size)
+
+
+def scale_bounding_box_diameter(bbox, scale):
+    bb_min, bb_size = bbox
+    bb_diameter = np.linalg.norm(bb_size)
+    bb_unit_dir = bb_size / bb_diameter
+    scaled_bb_size = bb_size * scale
+    scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
+    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
+    return scaled_bb_min, scaled_bb_size
