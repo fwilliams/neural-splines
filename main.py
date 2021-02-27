@@ -111,12 +111,12 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
 
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
+    print(ygrid.shape)
 
     aspect_ratio = bbox_input[1] / bbox_normalized[1]
     size_per_voxel = aspect_ratio * scaled_bbn_size / grid_size
 
-    v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(),
-                                   level=0.0)
+    v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(), level=0.0)
     # v -= bbox_input[0]
 
     return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
@@ -183,6 +183,7 @@ def main():
                  bbox_normalized[0] + bbox_normalized[1] + args.padding * bbox_normalized[1]
     grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
     print(plot_range, grid_size)
+    print(x.min(0), x.max(0))
     x, y = make_triples(x, n, args.eps)
 
     if args.lloyd_nystrom:
@@ -193,7 +194,7 @@ def main():
         num_ny = x_ny
         ny_count = x_ny.shape[0]
     else:
-        num_ny = args.num_ny if args.num_ny > 0 else v.shape[0]
+        num_ny = args.num_ny if args.num_ny > 0 else x.shape[0]
         ny_count = num_ny
 
     yb = np.ascontiguousarray(np.array(y.cpu().numpy().astype(np.float64), order="C"))
