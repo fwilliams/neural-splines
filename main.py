@@ -7,7 +7,7 @@ import time
 import torch
 from skimage.measure import marching_cubes
 
-from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, DirectKernelSolver
+from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, NeuralTangentKernel, DirectKernelSolver
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
@@ -28,7 +28,10 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
     opts.use_cpu = False
     opts.min_cuda_iter_size_64 = 1
 
-    if kernel_type == "spherical-laplace":
+    if kernel_type == "ntk":
+        print("Using Neural Tangent Kernel")
+        kernel = NeuralTangentKernel(variance=1.0, opt=opts)
+    elif kernel_type == "spherical-laplace":
         print("Using Spherical Laplacian Kernel")
         kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=opts)
     elif kernel_type == "arccosine":
