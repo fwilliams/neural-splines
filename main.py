@@ -133,7 +133,6 @@ def main():
                            help="Maximum number of conjugate gradient iterations.")
     argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
-    argparser.add_argument("--debug-plot", action="store_true", help="Plot the input and nystrom samples")
     argparser.add_argument("--debug-print-mem", action="store_true", help="Print memory stats")
     args = argparser.parse_args()
 
@@ -147,11 +146,6 @@ def main():
 
     v, f, n, _ = pcu.read_ply(args.input_point_cloud, dtype=np.float64)
     mask = np.linalg.norm(n, axis=-1) > 1e-5
-    if f.shape[0] > 0:
-        bad_idxs = np.nonzero(~mask)
-        bad_faces = np.isin(f[:, 0], bad_idxs) | np.isin(f[:, 1], bad_idxs) | np.isin(f[:, 2], bad_idxs)
-        faces_mask = np.logical_not(bad_faces)
-        f = f[faces_mask]
     n[mask] /= np.linalg.norm(n[mask], axis=-1, keepdims=True)
 
     if np.isfinite(args.padding):
@@ -168,18 +162,12 @@ def main():
         grid_size = args.grid_size
 
     print(plot_range, grid_size)
-    
+
     x = torch.from_numpy(v[mask]).to(torch.float64)
     n = torch.from_numpy(n[mask]).to(torch.float64)
     x, y = make_triples(x, n, args.eps)
 
     if args.lloyd_nystrom:
-        # FIXME: Lloyd
-        # if f.shape[0] != 0:
-        #     print(v.shape, f.max())
-        #     x_ny = pcu.sample_mesh_lloyd(v, f, args.num_ny)
-        #     x_ny = torch.from_numpy(x_ny).to(torch.float64)
-        # else:
         seed = args.seed if args.seed > 0 else 0
         ny_idx = pcu.prune_point_cloud_poisson_disk(x.numpy(), args.num_ny, random_seed=seed)
         x_ny = x[ny_idx]
@@ -196,20 +184,6 @@ def main():
     perm = torch.randperm(xb.shape[0])
     xb, yb = xb[perm], yb[perm]
 
-    if args.debug_plot:
-        from mayavi import mlab
-        mlab.figure()
-        mlab.points3d(xb[:, 0], xb[:, 1], xb[:, 2], yb, scale_factor=0.005, scale_mode="none")
-
-        if args.lloyd_nystrom:
-            mlab.figure()
-            if f.shape[0] > 0:
-                mlab.triangular_mesh(v[:, 0], v[:, 1], v[:, 2], f, color=(0.45, 0.45, 0.45))
-            else:
-                mlab.points3d(v[:, 0], v[:, 1], v[:, 2], scale_factor=0.005, scale_mode="none")
-            mlab.points3d(x_ny[:, 0], x_ny[:, 1], x_ny[:, 2],
-                          scale_factor=0.01, color=(0.3, 0.3, 0.77), scale_mode="none")
-        mlab.show()
     print(f"Fitting {xb.shape[0]} points using {ny_count} Nystrom samples")
     mdl = fit_model(xb, yb, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, decay=args.decay, stop_thresh=args.cg_stop_thresh,
