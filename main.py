@@ -11,8 +11,8 @@ from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, DirectKe
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
-def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falkon", maxiters=20, decay=-1.0,
-              stop_thresh=1e-7, verbose=False):
+def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falkon",
+              maxiters=20, stop_thresh=1e-7, verbose=False):
     if isinstance(num_ny, torch.Tensor):
         selector = falkon.center_selection.FixedSelector(centers=num_ny, y_centers=None)
         num_ny = num_ny[0].shape[0]
@@ -29,17 +29,11 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
     opts.min_cuda_iter_size_64 = 1
 
     if kernel_type == "spherical-laplace":
-        if decay > 0.0:
-            raise NotImplementedError("TODO: Implement arc cosine kernel with decay")
-        else:
-            print("Using Spherical Laplacian Kernel")
-            kernel = LaplaceKernelSphere(alpha=-1.0, gamma=0.5, opt=opts)
+        print("Using Spherical Laplacian Kernel")
+        kernel = LaplaceKernelSphere(alpha=-1.0, gamma=0.5, opt=opts)
     elif kernel_type == "arccosine":
-        if decay > 0.0:
-            raise NotImplementedError("TODO: Implement arc cosine kernel with decay")
-        else:
-            print("Using Arccosine Kernel")
-            kernel = ArcCosineKernel(opt=opts)
+        print("Using Arccosine Kernel")
+        kernel = ArcCosineKernel(opt=opts)
     else:
         raise ValueError("Invalid kernel_type")
 
@@ -99,7 +93,7 @@ def main():
     argparser.add_argument("--grid-size", "-g", type=int, default=128,
                            help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
                                 "function on a G x G x G voxel grid.")
-    
+
     argparser.add_argument("--dtype", type=str, default="float64",
                            help="Scalar type of the data. Must be one of 'float32' or 'float64'")
 
@@ -160,7 +154,7 @@ def main():
 
     print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
     mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
-                    kernel_type=args.kernel, decay=args.decay, stop_thresh=args.cg_stop_thresh,
+                    kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                     verbose=args.verbose)
     grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, args.scale, bbox_normalized, bbox_input, dtype=dtype)
 
