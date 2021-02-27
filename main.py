@@ -116,7 +116,7 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     size_per_voxel = aspect_ratio * scaled_bbn_size / grid_size
 
     v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(),
-                                   level=0.0, spacing=size_per_voxel)
+                                   level=0.0)
     # v -= bbox_input[0]
 
     return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
