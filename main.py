@@ -96,7 +96,10 @@ def main():
     argparser.add_argument("--num-ny", type=int, default=-1,
                            help="Number of Nyström samples for kernel ridge regression. If negative, don't use "
                                 "Nyström sampling")
-
+    argparser.add_argument("--grid-size", "-g", type=int, default=128,
+                           help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
+                                "function on a G x G x G voxel grid.")
+    
     argparser.add_argument("--dtype", type=str, default="float64",
                            help="Scalar type of the data. Must be one of 'float32' or 'float64'")
 
