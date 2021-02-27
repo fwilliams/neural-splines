@@ -88,7 +88,7 @@ def eval_grid(model, grid_size, plot_range, nchunks=1):
     return ygrid
 
 
-def eval_grid2(model, grid_width, scale, bbox):
+def reconstruct_on_voxel_grid(model, grid_width, scale, bbox):
     print(grid_width, scale)
     print(bbox)
     bb_min, bb_size = bbox
@@ -98,7 +98,7 @@ def eval_grid2(model, grid_width, scale, bbox):
     scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
     scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
 
-    plt_range_max, plt_range_min = scaled_bb_min, scaled_bb_min + scaled_bb_size
+    plt_range_min, plt_range_max = scaled_bb_min, scaled_bb_min + scaled_bb_size
     grid_size = np.round(bb_size * grid_width).astype(np.int64)
     print(plt_range_min, plt_range_max)
 
@@ -203,7 +203,7 @@ def main():
         print(torch.cuda.memory_summary('cuda'))
 
     # grid = eval_grid(mdl, grid_size=grid_size, plot_range=plot_range, nchunks=1)
-    grid = eval_grid2(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized)
+    grid = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized)
     if isinstance(plot_range, tuple):
         plot_bb = plot_range[1] - plot_range[0]
         grid_spacing = plot_bb / (grid_size.astype(np.float64) - 1.0)
