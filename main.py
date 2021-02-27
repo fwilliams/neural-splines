@@ -88,6 +88,31 @@ def eval_grid(model, grid_size, plot_range, nchunks=1):
     return ygrid
 
 
+def eval_grid2(model, grid_width, scale, bbox):
+
+    bb_min, bb_size = bbox
+    bb_diameter = np.linalg.norm(bb_size)
+    bb_unit_dir = bb_size / bb_diameter
+    scaled_bb_size = bb_size * scale
+    scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
+    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_size) * bb_unit_dir
+
+    plt_range_max, plt_range_min = scaled_bb_min, scaled_bb_min + scaled_bb_size
+    grid_size = np.round(scaled_bb_size * grid_width).astype(np.int64)
+    print(plt_range_min, plt_range_min)
+
+    print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
+    xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:grid_size[0] * 1j,
+                                                  plt_range_min[1]:plt_range_max[1]:grid_size[1] * 1j,
+                                                  plt_range_min[2]:plt_range_max[2]:grid_size[2] * 1j]],
+                     axis=-1)
+    xgrid = torch.from_numpy(xgrid)
+    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
+
+    ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
+    return ygrid
+
+
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
@@ -198,8 +223,8 @@ def main():
         print("CUDA MEMORY SUMMARY")
         print(torch.cuda.memory_summary('cuda'))
 
-    grid = eval_grid(mdl, grid_size=grid_size, plot_range=plot_range, nchunks=1)
-
+    # grid = eval_grid(mdl, grid_size=grid_size, plot_range=plot_range, nchunks=1)
+    grid = eval_grid2(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized)
     if isinstance(plot_range, tuple):
         plot_bb = plot_range[1] - plot_range[0]
         grid_spacing = plot_bb / (grid_size.astype(np.float64) - 1.0)
