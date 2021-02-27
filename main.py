@@ -65,7 +65,8 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
                                                   plt_range_min[1]:plt_range_max[1]:grid_size[1] * 1j,
                                                   plt_range_min[2]:plt_range_max[2]:grid_size[2] * 1j]],
                      axis=-1)
-    xgrid = torch.cat([torch.from_numpy(xgrid), torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
+    xgrid = torch.from_numpy(xgrid).to(dtype)
+    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
 
