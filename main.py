@@ -89,7 +89,8 @@ def eval_grid(model, grid_size, plot_range, nchunks=1):
 
 
 def eval_grid2(model, grid_width, scale, bbox):
-
+    print(grid_width, scale)
+    print(bbox)
     bb_min, bb_size = bbox
     bb_diameter = np.linalg.norm(bb_size)
     bb_unit_dir = bb_size / bb_diameter
@@ -168,28 +169,6 @@ def main():
     print("Using seed", seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
-
-    # v, f, n, _ = pcu.read_ply(args.input_point_cloud, dtype=np.float64)
-    # mask = np.linalg.norm(n, axis=-1) > 1e-5
-    # n[mask] /= np.linalg.norm(n[mask], axis=-1, keepdims=True)
-    #
-    # if np.isfinite(args.padding):
-    #     v -= v.min(0)[np.newaxis, :]
-    #     bbox = v.max(0) - v.min(0)
-    #     v -= bbox / 2.0
-    #     v /= bbox.max()
-    #     bbox = (v.max(0) - v.min(0))
-    #     plot_range = v.min(0) - args.padding * bbox, v.max(0) + args.padding * bbox
-    #     bbox = v.max(0) - v.min(0)
-    #     grid_size = np.round(bbox * args.grid_size).astype(np.int64)
-    # else:
-    #     plot_range = args.plot_range
-    #     grid_size = args.grid_size
-    #
-    # print(plot_range, grid_size)
-    #
-    # x = torch.from_numpy(v[mask]).to(torch.float64)
-    # n = torch.from_numpy(n[mask]).to(torch.float64)
 
     x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud)
     plot_range = bbox_normalized[0] - args.padding * bbox_normalized[1], \
