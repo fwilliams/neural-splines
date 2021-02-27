@@ -8,7 +8,7 @@ import torch
 from skimage.measure import marching_cubes
 
 from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, DirectKernelSolver
-from common import make_triples
+from common import make_triples, load_normalized_point_cloud
 import tqdm
 
 
@@ -144,27 +144,33 @@ def main():
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    v, f, n, _ = pcu.read_ply(args.input_point_cloud, dtype=np.float64)
-    mask = np.linalg.norm(n, axis=-1) > 1e-5
-    n[mask] /= np.linalg.norm(n[mask], axis=-1, keepdims=True)
+    # v, f, n, _ = pcu.read_ply(args.input_point_cloud, dtype=np.float64)
+    # mask = np.linalg.norm(n, axis=-1) > 1e-5
+    # n[mask] /= np.linalg.norm(n[mask], axis=-1, keepdims=True)
+    #
+    # if np.isfinite(args.padding):
+    #     v -= v.min(0)[np.newaxis, :]
+    #     bbox = v.max(0) - v.min(0)
+    #     v -= bbox / 2.0
+    #     v /= bbox.max()
+    #     bbox = (v.max(0) - v.min(0))
+    #     plot_range = v.min(0) - args.padding * bbox, v.max(0) + args.padding * bbox
+    #     bbox = v.max(0) - v.min(0)
+    #     grid_size = np.round(bbox * args.grid_size).astype(np.int64)
+    # else:
+    #     plot_range = args.plot_range
+    #     grid_size = args.grid_size
+    #
+    # print(plot_range, grid_size)
+    #
+    # x = torch.from_numpy(v[mask]).to(torch.float64)
+    # n = torch.from_numpy(n[mask]).to(torch.float64)
 
-    if np.isfinite(args.padding):
-        v -= v.min(0)[np.newaxis, :]
-        bbox = v.max(0) - v.min(0)
-        v -= bbox / 2.0
-        v /= bbox.max()
-        bbox = (v.max(0) - v.min(0))
-        plot_range = v.min(0) - args.padding * bbox, v.max(0) + args.padding * bbox
-        bbox = v.max(0) - v.min(0)
-        grid_size = np.round(bbox * args.grid_size).astype(np.int64)
-    else:
-        plot_range = args.plot_range
-        grid_size = args.grid_size
-
+    x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud)
+    plot_range = bbox_normalized[0] - args.padding * bbox_normalized[1], \
+                 bbox_normalized[0] + bbox_normalized[1] + args.padding * bbox_normalized[1]
+    grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
     print(plot_range, grid_size)
-
-    x = torch.from_numpy(v[mask]).to(torch.float64)
-    n = torch.from_numpy(n[mask]).to(torch.float64)
     x, y = make_triples(x, n, args.eps)
 
     if args.lloyd_nystrom:
