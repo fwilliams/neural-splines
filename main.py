@@ -97,8 +97,9 @@ def main():
                            help="Which kernel to use. Must be one of 'spherical-laplace' or 'arccosine'.")
     argparser.add_argument("--penalty", type=float, default=0.0,
                            help="Regularization penalty for kernel ridge regression.")
-    argparser.add_argument("--num-ny", type=int, default=1024,
-                           help="Number of Nyström samples for kernel ridge regression.")
+    argparser.add_argument("--num-ny", type=int, default=-1,
+                           help="Number of Nyström samples for kernel ridge regression. If negative, don't use "
+                                "Nyström sampling")
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
 
     argparser.add_argument("--padding", type=float, default=np.inf,
@@ -166,6 +167,8 @@ def main():
         plot_range = args.plot_range
         grid_size = args.grid_size
 
+    print(plot_range, grid_size)
+    
     x = torch.from_numpy(v[mask]).to(torch.float64)
     n = torch.from_numpy(n[mask]).to(torch.float64)
     x, y = make_triples(x, n, args.eps)
