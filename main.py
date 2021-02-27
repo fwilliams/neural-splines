@@ -99,15 +99,11 @@ def scale_bounding_box_diameter(bbox, scale):
 
 
 def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input):
-    print(grid_width, scale)
-    print(bbox_normalized)
-
     scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, scale)
     scaled_bbi_min, scaled_bbi_size = scale_bounding_box_diameter(bbox_input, scale)
 
     plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
     grid_size = np.round(bbox_normalized[1] * grid_width).astype(np.int64)
-    print(plt_range_min, plt_range_max)
 
     print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
     xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:grid_size[0] * 1j,
@@ -118,7 +114,6 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
 
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
-    print(ygrid.shape)
 
     size_per_voxel = scaled_bbi_size / (grid_size - 1.0)
 
@@ -185,12 +180,8 @@ def main():
     np.random.seed(seed)
 
     x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud)
-    plot_range = bbox_normalized[0] - args.padding * bbox_normalized[1], \
-                 bbox_normalized[0] + bbox_normalized[1] + args.padding * bbox_normalized[1]
-    grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
-    print(plot_range, grid_size)
-    print(x.min(0), x.max(0))
     x, y = make_triples(x, n, args.eps)
+    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(torch.float64)
 
     if args.lloyd_nystrom:
         seed = args.seed if args.seed > 0 else 0
@@ -200,42 +191,32 @@ def main():
         num_ny = x_ny
         ny_count = x_ny.shape[0]
     else:
+        x_ny = None
         num_ny = args.num_ny if args.num_ny > 0 else x.shape[0]
         ny_count = num_ny
 
-    yb = np.ascontiguousarray(np.array(y.cpu().numpy().astype(np.float64), order="C"))
-    xb = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(torch.float64)
-    yb = torch.from_numpy(yb)
-    perm = torch.randperm(xb.shape[0])
-    xb, yb = xb[perm], yb[perm]
-
-    print(f"Fitting {xb.shape[0]} points using {ny_count} Nystrom samples")
-    mdl = fit_model(xb, yb, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
+    print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
+    mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, decay=args.decay, stop_thresh=args.cg_stop_thresh,
                     verbose=args.verbose)
     if args.debug_print_mem:
         print("CUDA MEMORY SUMMARY")
         print(torch.cuda.memory_summary('cuda'))
 
-    # grid = eval_grid(mdl, grid_size=grid_size, plot_range=plot_range, nchunks=1)
     grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized, bbox_input)
-    # if isinstance(plot_range, tuple):
-    #     plot_bb = plot_range[1] - plot_range[0]
-    #     grid_spacing = plot_bb / (grid_size.astype(np.float64) - 1.0)
-    # else:
-    #     grid_spacing = np.ones(3) * (0.577 * 2.0 / (grid_size.astype(np.float64) - 1.0))
-    # v, f, n, vals = marching_cubes(grid.detach().cpu().numpy(),
-    #                                level=0.0, spacing=grid_spacing)
-    # if isinstance(plot_range, tuple):
-    #     v -= ((plot_range[1] - plot_range[0]) / 2.0)
-    # else:
-    #     v -= plot_range
     pcu.write_ply(args.out, *mesh)
     if args.save_grid:
-        np.save(args.out + ".grid", grid.detach().cpu().numpy())
+        np.savez(args.out + ".grid", grid=grid.detach().cpu().numpy())
 
     if args.save_points:
-        torch.save((x, x_ny[:, :3], y), args.out + ".pts.pth")
+        if x_ny is None:
+            x_ny = mdl.ny_points_[:, :3] if mdl.ny_points_ is not None else None
+        else:
+            x_ny = x_ny[:, :3]
+        np.savez(args.out + ".pts",
+                 x=x.detach().cpu().numpy(),
+                 y_ny=y.detach().cpu().numpy(),
+                 x_ny=x_ny.detach().cpu().numpy())
 
 
 if __name__ == "__main__":
