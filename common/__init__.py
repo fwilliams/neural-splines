@@ -73,10 +73,13 @@ def load_normalized_point_cloud(filename, min_norm_normal=1e-5):
     # We need to center and rescale the point cloud in [-0.5, 0.5]^3
     bbox_origin = x.min(0)
     x -= bbox_origin[np.newaxis, :]  # [0, 0, 0] to [sx, sy, sz]
+    print(f"(1) x-range: {x.min(0)}, {x.max(0)}")
     bbox_size = x.max(0) - x.min(0)  # [sz, sy, sz]
+    print(f"(2) x bbox_size: {bbox_size}")
     x -= (bbox_size / 2.0)  # center
+    print(f"(3) x-range: {x.min(0)}, {x.max(0)}")
     x /= bbox_size.max()  # [0, 0, 0] to up to [1, 1, 1] (aspect ratio is preserved)
-    x -= 0.5  # [-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]
+    print(f"(4) x-range: {x.min(0)}, {x.max(0)}")
 
     n_bbox_origin, n_bbox_size = x.min(0), (x.max(0) - x.min(0))
     x = torch.from_numpy(v[mask]).to(torch.float64)
