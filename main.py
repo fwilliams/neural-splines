@@ -88,26 +88,25 @@ def eval_grid(model, grid_size, plot_range, nchunks=1):
     return ygrid
 
 
+def scale_bounding_box_diameter(bbox, scale):
+    bb_min, bb_size = bbox
+    bb_diameter = np.linalg.norm(bb_size)
+    bb_unit_dir = bb_size / bb_diameter
+    scaled_bb_size = bb_size * scale
+    scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
+    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
+    return scaled_bb_min, scaled_bb_size
+
+
 def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input):
     print(grid_width, scale)
     print(bbox_normalized)
-    bbn_min, bbn_size = bbox_normalized
-    bbn_diameter = np.linalg.norm(bbn_size)
-    bbn_unit_dir = bbn_size / bbn_diameter
-    scaled_bbn_size = bbn_size * scale
-    scaled_bbn_diameter = np.linalg.norm(scaled_bbn_size)
-    scaled_bbn_min = bbn_min - 0.5 * (scaled_bbn_diameter - bbn_diameter) * bbn_unit_dir
 
-    bbi_min, bbi_size = bbox_input
-    bbi_diameter = np.linalg.norm(bbi_size)
-    bbi_unit_dir = bbi_size / bbi_diameter
-    print(bbi_unit_dir - bbn_unit_dir)
-    scaled_bbi_size = bbi_size * scale
-    scaled_bbi_diameter = np.linalg.norm(scaled_bbi_size)
-    scaled_bbi_min = bbi_min - 0.5 * (scaled_bbi_diameter - bbi_diameter) * bbi_unit_dir
+    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, scale)
+    scaled_bbi_min, scaled_bbi_size = scale_bounding_box_diameter(bbox_input, scale)
 
     plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
-    grid_size = np.round(bbn_size * grid_width).astype(np.int64)
+    grid_size = np.round(bbox_normalized[1] * grid_width).astype(np.int64)
     print(plt_range_min, plt_range_max)
 
     print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
@@ -121,7 +120,7 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
     print(ygrid.shape)
 
-    size_per_voxel = scaled_bbi_size / grid_size
+    size_per_voxel = scaled_bbi_size / (grid_size - 1.0)
 
     v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(), level=0.0, spacing=size_per_voxel)
     v += scaled_bbi_min
