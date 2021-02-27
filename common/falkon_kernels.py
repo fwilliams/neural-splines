@@ -287,7 +287,7 @@ class LaplaceKernelSphere(Kernel, KeopsKernelMixin, DirectKernelMixin, ABC):
         if self.debug:
             print("LaplaceKernelSphere._keops_mmv_impl(X1, X2, v, kernel, out, opt)")
         # formula = 'Norm2(X) * Norm2(Y) * Exp(alpha * Sqrt(one - Clamp11(Normalize(X) | Normalize(Y)))) * v'
-        formula = 'Norm2(X) * Norm2(Y) * Exp(alpha * Powf(one - Clamp11( (Normalize(X) | Normalize(Y)) ), gamma)) * v'
+        formula = 'Norm2(X) * Norm2(Y) * Exp(alpha * Powf(one - (Normalize(X) | Normalize(Y) ), gamma)) * v'
         aliases = [
             'X = Vi(%d)' % (X1.shape[1]),
             'Y = Vj(%d)' % (X2.shape[1]),
@@ -338,7 +338,6 @@ class LaplaceKernelSphere(Kernel, KeopsKernelMixin, DirectKernelMixin, ABC):
         n1, n2 = [_.to(A) for _ in d]
         A.div_(n1)
         A.div_(n2)
-        A.clamp_(-1.0, 1.0)
         A.mul_(-1.0)
         A.add_(1.0)
         A.pow_(gamma)
