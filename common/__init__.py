@@ -58,7 +58,7 @@ def make_triples(x, n, eps):
     return x_triples, occ_triples
 
 
-def load_normalized_point_cloud(filename, min_norm_normal=1e-5):
+def load_normalized_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     v, f, n, _ = pcu.read_ply(filename, dtype=np.float64)
 
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
@@ -82,8 +82,8 @@ def load_normalized_point_cloud(filename, min_norm_normal=1e-5):
     # print(f"(4) x-range: {x.min(0)}, {x.max(0)}")
 
     n_bbox_origin, n_bbox_size = x.min(0), (x.max(0) - x.min(0))
-    x = torch.from_numpy(x).to(torch.float64)
-    n = torch.from_numpy(n).to(torch.float64)
+    x = torch.from_numpy(x).to(dtype)
+    n = torch.from_numpy(n).to(dtype)
 
     # Return points, normals, and transform information to denormalize points
     return x, n, (bbox_origin, bbox_size), (n_bbox_origin, n_bbox_size)

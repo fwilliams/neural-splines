@@ -137,10 +137,10 @@ def main():
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud)
+    x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud, dtype=dtype)
     x, y = make_triples(x, n, args.eps)
-    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1).to(dtype)
-    y = y.to(x)
+    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
+    print(x.dtype, x_homogeneous.dtype, y.dtype)
 
     if args.lloyd_nystrom:
         seed = args.seed if args.seed > 0 else 0
