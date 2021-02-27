@@ -30,7 +30,7 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
 
     if kernel_type == "spherical-laplace":
         print("Using Spherical Laplacian Kernel")
-        kernel = LaplaceKernelSphere(alpha=-1.0, gamma=0.5, opt=opts)
+        kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=opts)
     elif kernel_type == "arccosine":
         print("Using Arccosine Kernel")
         kernel = ArcCosineKernel(opt=opts)
