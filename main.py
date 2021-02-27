@@ -116,8 +116,9 @@ def main():
                                 "shape GxGxG where G is the --grid-width argument")
     argparser.add_argument("--save-points", action="store_true", help="Save input points and Nystrom samples")
 
-    argparser.add_argument("--lloyd-nystrom", action="store_true",
-                           help="Generate Nystrom samples by doing lloyd relaxation on the input mesh")
+    argparser.add_argument("--blue-noise-nystrom", action="store_true",
+                           help="Generate Nyström samples by downsampling the input "
+                                "point cloud with a blue noise distribution")
 
     argparser.add_argument("--cg-max-iters", type=int, default=20,
                            help="Maximum number of conjugate gradient iterations.")
@@ -144,7 +145,8 @@ def main():
     x, y = make_triples(x, n, args.eps)
     x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
-    if args.lloyd_nystrom:
+    if args.blue_noise_nystrom:
+        print("Generating blue noise Nyström samples...")
         seed = args.seed if args.seed > 0 else 0
         ny_idx = pcu.prune_point_cloud_poisson_disk(x.numpy(), args.num_ny, random_seed=seed)
         x_ny = x_homogeneous[ny_idx]
