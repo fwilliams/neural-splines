@@ -82,8 +82,8 @@ def load_normalized_point_cloud(filename, min_norm_normal=1e-5):
     # print(f"(4) x-range: {x.min(0)}, {x.max(0)}")
 
     n_bbox_origin, n_bbox_size = x.min(0), (x.max(0) - x.min(0))
-    x = torch.from_numpy(v[mask]).to(torch.float64)
-    n = torch.from_numpy(n[mask]).to(torch.float64)
+    x = torch.from_numpy(x).to(torch.float64)
+    n = torch.from_numpy(n).to(torch.float64)
 
     # Return points, normals, and transform information to denormalize points
     return x, n, (bbox_origin, bbox_size), (n_bbox_origin, n_bbox_size)
