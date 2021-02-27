@@ -98,6 +98,14 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     scaled_bbn_diameter = np.linalg.norm(scaled_bbn_size)
     scaled_bbn_min = bbn_min - 0.5 * (scaled_bbn_diameter - bbn_diameter) * bbn_unit_dir
 
+    bbi_min, bbi_size = bbox_input
+    bbi_diameter = np.linalg.norm(bbi_size)
+    bbi_unit_dir = bbi_size / bbi_diameter
+    print(bbi_unit_dir - bbn_unit_dir)
+    scaled_bbi_size = bbi_size * scale
+    scaled_bbi_diameter = np.linalg.norm(scaled_bbi_size)
+    scaled_bbi_min = bbi_min - 0.5 * (scaled_bbi_diameter - bbi_diameter) * bbi_unit_dir
+
     plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
     grid_size = np.round(bbn_size * grid_width).astype(np.int64)
     print(plt_range_min, plt_range_max)
@@ -113,11 +121,10 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
     print(ygrid.shape)
 
-    aspect_ratio = bbox_input[1] / bbox_normalized[1]
-    size_per_voxel = aspect_ratio * scaled_bbn_size / grid_size
+    size_per_voxel = scaled_bbi_size / grid_size
 
     v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(), level=0.0, spacing=size_per_voxel)
-    v += bbox_input[0]
+    v += scaled_bbi_min
 
     return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
 
