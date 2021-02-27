@@ -88,18 +88,18 @@ def eval_grid(model, grid_size, plot_range, nchunks=1):
     return ygrid
 
 
-def reconstruct_on_voxel_grid(model, grid_width, scale, bbox):
+def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input):
     print(grid_width, scale)
-    print(bbox)
-    bb_min, bb_size = bbox
-    bb_diameter = np.linalg.norm(bb_size)
-    bb_unit_dir = bb_size / bb_diameter
-    scaled_bb_size = bb_size * scale
-    scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
-    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
+    print(bbox_normalized)
+    bbn_min, bbn_size = bbox_normalized
+    bbn_diameter = np.linalg.norm(bbn_size)
+    bbn_unit_dir = bbn_size / bbn_diameter
+    scaled_bbn_size = bbn_size * scale
+    scaled_bbn_diameter = np.linalg.norm(scaled_bbn_size)
+    scaled_bbn_min = bbn_min - 0.5 * (scaled_bbn_diameter - bbn_diameter) * bbn_unit_dir
 
-    plt_range_min, plt_range_max = scaled_bb_min, scaled_bb_min + scaled_bb_size
-    grid_size = np.round(bb_size * grid_width).astype(np.int64)
+    plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
+    grid_size = np.round(bbn_size * grid_width).astype(np.int64)
     print(plt_range_min, plt_range_max)
 
     print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
@@ -111,7 +111,15 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox):
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(torch.float64)
 
     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
-    return ygrid
+
+    aspect_ratio = bbox_input[1] / bbox_normalized[1]
+    size_per_voxel = aspect_ratio * scaled_bbn_size / grid_size
+
+    v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(),
+                                   level=0.0, spacing=size_per_voxel)
+    v -= bbox_input[0]
+
+    return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
 
 
 def main():
@@ -203,19 +211,19 @@ def main():
         print(torch.cuda.memory_summary('cuda'))
 
     # grid = eval_grid(mdl, grid_size=grid_size, plot_range=plot_range, nchunks=1)
-    grid = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized)
-    if isinstance(plot_range, tuple):
-        plot_bb = plot_range[1] - plot_range[0]
-        grid_spacing = plot_bb / (grid_size.astype(np.float64) - 1.0)
-    else:
-        grid_spacing = np.ones(3) * (0.577 * 2.0 / (grid_size.astype(np.float64) - 1.0))
-    v, f, n, vals = marching_cubes(grid.detach().cpu().numpy(),
-                                   level=0.0, spacing=grid_spacing)
-    if isinstance(plot_range, tuple):
-        v -= ((plot_range[1] - plot_range[0]) / 2.0)
-    else:
-        v -= plot_range
-    pcu.write_ply(args.out, v, f, n.astype(v.dtype), vals.astype(v.dtype))
+    grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, 1.0 + (2.0 * args.padding), bbox_normalized)
+    # if isinstance(plot_range, tuple):
+    #     plot_bb = plot_range[1] - plot_range[0]
+    #     grid_spacing = plot_bb / (grid_size.astype(np.float64) - 1.0)
+    # else:
+    #     grid_spacing = np.ones(3) * (0.577 * 2.0 / (grid_size.astype(np.float64) - 1.0))
+    # v, f, n, vals = marching_cubes(grid.detach().cpu().numpy(),
+    #                                level=0.0, spacing=grid_spacing)
+    # if isinstance(plot_range, tuple):
+    #     v -= ((plot_range[1] - plot_range[0]) / 2.0)
+    # else:
+    #     v -= plot_range
+    pcu.write_ply(args.out, *mesh)
     if args.save_grid:
         np.save(args.out + ".grid", grid.detach().cpu().numpy())
 
