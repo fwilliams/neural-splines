@@ -96,7 +96,7 @@ def eval_grid2(model, grid_width, scale, bbox):
     bb_unit_dir = bb_size / bb_diameter
     scaled_bb_size = bb_size * scale
     scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
-    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_size) * bb_unit_dir
+    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
 
     plt_range_max, plt_range_min = scaled_bb_min, scaled_bb_min + scaled_bb_size
     grid_size = np.round(scaled_bb_size * grid_width).astype(np.int64)
