@@ -198,7 +198,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         theta = 'two * Atan2(Norm2(Norm2(Y) * X - Norm2(X) * Y), Norm2(Norm2(Y) * X + Norm2(X) * Y))'
         norm_xy = '(Norm2(X) * Norm2(Y))'
 
-        j01 = f'({norm_xy} * (Sin({theta}) + (one + variance) * (pi - {theta}) * Cos{theta}))'
+        j01 = f'({norm_xy} * (Sin({theta}) + (one + variance) * (pi - {theta}) * Cos({theta})))'
         formula = f'({j01} / pi) * v'
         aliases = [
             'X = Vi(%d)' % (X1.shape[1]),
