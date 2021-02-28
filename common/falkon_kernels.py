@@ -195,11 +195,10 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         if self.debug:
             print(f"NeuralTangentKernel._keops_mmv_impl(X1={X1.shape}, X2={X2.shape}, v, kernel, out, opt)")
 
+        theta = 'two * Atan2(Norm2(Norm2(Y) * X - Norm2(X) * Y), Norm2(Norm2(Y) * X + Norm2(X) * Y))'
         norm_xy = '(Norm2(X) * Norm2(Y))'
-        cos_theta = '((Normalize(X) | Normalize(Y)))'
-        theta = 'Acos(' + cos_theta + ')'
 
-        j01 = f'({norm_xy} * (Sin({theta}) + (one + variance) * (pi - {theta}) * {cos_theta}))'
+        j01 = f'({norm_xy} * (Sin({theta}) + (one + variance) * (pi - {theta}) * Cos{theta}))'
         formula = f'({j01} / pi) * v'
         aliases = [
             'X = Vi(%d)' % (X1.shape[1]),
@@ -207,11 +206,13 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
             'v = Vj(%d)' % (v.shape[1]),
             'pi = Pm(1)',
             'variance = Pm(1)',
-            'one = Pm(1)'
+            'one = Pm(1)',
+            'two = Pm(1)'
         ]
         other_vars = [torch.tensor([np.pi]).to(dtype=X1.dtype, device=X1.device),
                       torch.tensor([self.variance]).to(dtype=X1.dtype, device=X1.device),
-                      torch.tensor([1.0]).to(dtype=X1.dtype, device=X1.device)]
+                      torch.tensor([1.0]).to(dtype=X1.dtype, device=X1.device),
+                      torch.tensor([2.0]).to(dtype=X1.dtype, device=X1.device)]
 
         return self.keops_mmv(X1, X2, v, out, formula, aliases, other_vars, opt)
 
@@ -236,7 +237,28 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse prepare")
 
     def _apply(self, X1: torch.Tensor, X2: torch.Tensor, out: torch.Tensor):
-        out.addmm_(X1, X2)
+        arg1 = torch.zeros(X1.shape[0], X2.shape[0], X1.shape[-1])
+        arg2 = torch.zeros(X1.shape[0], X2.shape[0], X1.shape[-1])
+        nx1, nx2 = torch.norm(X1, dim=-1, keepdim=True).unsqueeze(1), torch.norm(X2, dim=-1, keepdim=True).unsqueeze(0)
+
+        # |X| * Y
+        arg2.add_(nx1)
+        arg2.mul_(X2.unsqueeze(0))
+
+        # |Y| * X
+        arg1.add_(nx2)  # [n, m, d]
+        arg1.mul_(X1.unsqueeze(1))  # [n, m, d]
+        arg1.sub_(arg2)  # |Y| * X - |X| * Y
+        out.add_(arg1.norm(dim=-1))
+
+        # |Y| * X
+        arg1.zero_()
+        arg1.add_(nx2)  # [n, m, d]
+        arg1.mul_(X1.unsqueeze(1))  # [n, m, d]
+        arg1.add_(arg2)  # |Y| * X + |X| * Y
+        out.atan2_(arg1.norm(dim=-1))
+
+        out.mul_(2.0)
 
     def _apply_sparse(self, X1: SparseTensor, X2: SparseTensor, out: torch.Tensor):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse apply")
@@ -244,22 +266,22 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
     def _finalize(self, A: torch.Tensor, d):
         if self.debug:
             print(f"NeuralTangentKernel._finalize(A={A.shape}, d)")
-        n1, n2 = [_.to(A) for _ in d]
-        A.div_(n1)
-        A.div_(n2)
-        A.clamp_(-1.0, 1.0)  # cos(theta)
+        C = torch.cos(A)
+        S = torch.sin(A)
 
-        B = torch.acos(A)  # theta
-        C = torch.sin(B)  # sin(theta)
-        B.mul_(-1.0)  # -theta
-        B.add_(np.pi)  # pi - theta
-        A.mul_(B)  # (pi - theta) * cos(theta)
-        A.mul_(1.0 + self.variance)  # (1 + sigma) * (pi - theta) * cos(theta)
-        A.add_(C)  # sin(theta) + (1 + sigma) * (pi - theta) * cos(theta) = J_1 + J_0
-        del B, C
+        # (1.0 + var) * (pi - theta)
+        A.mul_(-1.0)
+        A.add_(np.pi)
+        A.mul_(1.0 + self.variance)
 
-        A.mul_(n1)  # |X| * J_1
-        A.mul_(n2)  # |X| * |Y| * J_1
+        # sin(theta) + (1.0 + var) * (pi - theta) * cos(theta)
+        A.mul_(C)
+        A.add_(S)
+
+        del C, S
+        nx1, nx2 = [_.to(A) for _ in d]
+        A.mul_(nx1)  # |X| * (J_1 + J_2)
+        A.mul_(nx2)  # |X| * |Y| * (J_1 + J_2)
         A.div_(np.pi)  # |X| * |Y| * J_1 / pi
         return A
 
