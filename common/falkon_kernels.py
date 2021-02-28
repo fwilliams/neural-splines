@@ -240,6 +240,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         arg1 = torch.zeros(X1.shape[0], X2.shape[0], X1.shape[-1]).to(out)
         arg2 = torch.zeros(X1.shape[0], X2.shape[0], X1.shape[-1]).to(out)
         print(out.shape, X1.shape, X2.shape)
+        X2 = X2.T
         nx1, nx2 = torch.norm(X1, dim=-1, keepdim=True).unsqueeze(1), torch.norm(X2, dim=-1, keepdim=True).unsqueeze(0)
 
         # |X| * Y
