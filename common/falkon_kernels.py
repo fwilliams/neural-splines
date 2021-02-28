@@ -237,12 +237,13 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse prepare")
 
     def _apply(self, X1: torch.Tensor, X2: torch.Tensor, out: torch.Tensor):
+        X2 = X2.T  # This is passed in transposed... ugh
         arg1 = torch.zeros(X1.shape[0], X2.shape[0], X1.shape[-1]).to(out)
         arg2 = torch.zeros(X1.shape[0], X2.shape[0], X1.shape[-1]).to(out)
         print(out.shape, X1.shape, X2.shape)
-        X2 = X2.T
         nx1, nx2 = torch.norm(X1, dim=-1, keepdim=True).unsqueeze(1), torch.norm(X2, dim=-1, keepdim=True).unsqueeze(0)
 
+        print(nx1.shape, nx2.shape, X1.shape, X2.shape)
         # |X| * Y
         arg2.add_(nx1)
         arg2.mul_(X2.unsqueeze(0))
