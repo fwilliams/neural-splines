@@ -16,7 +16,6 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
     if isinstance(num_ny, torch.Tensor):
         selector = falkon.center_selection.FixedSelector(centers=num_ny, y_centers=None)
         num_ny = num_ny[0].shape[0]
-        print("Using fixed Nystrom samples")
     else:
         selector = 'uniform'
 
