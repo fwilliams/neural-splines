@@ -304,8 +304,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         outcp = cp.fromDlpack(to_dlpack(out))
         print(x1cp.flags, x2cp.flags, outcp.flags)
 
-        pt_dim = X1.shape[1]
-        dims = X1.shape[0], X2.shape[0]
+        pt_dim = int(X1.shape[1])
+        dims = int(X1.shape[0]), int(X2.shape[0])
         threads = (16, 16)  # TODO: Maybe hardcoding this is bad
         blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
 
