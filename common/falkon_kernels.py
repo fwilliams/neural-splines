@@ -314,6 +314,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         kernel(threads, blocks, (x1cp, x2cp, outcp, 1.0, dims[0], dims[1], pt_dim))
         out = from_dlpack(outcp.toDlpack())
+        print(out)
 
     def _apply_sparse(self, X1: SparseTensor, X2: SparseTensor, out: torch.Tensor):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse apply")
