@@ -302,6 +302,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
         outcp = cp.fromDlpack(to_dlpack(out))
+        print(x1cp.flags, x2cp.flags, outcp.flags)
 
         pt_dim = X1.shape[1]
         dims = X1.shape[0], X2.shape[0]
@@ -311,7 +312,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print(x1cp.shape, x2cp.shape, outcp.shape)
         print(dims[0], dims[1], pt_dim)
 
-        kernel(threads, blocks, (x1cp, x2cp, outcp, float(self.variance), dims[0], dims[1], pt_dim))
+        kernel(threads, blocks, (x1cp, x2cp, outcp, 1.0, dims[0], dims[1], pt_dim))
         out = from_dlpack(outcp.toDlpack())
 
     def _apply_sparse(self, X1: SparseTensor, X2: SparseTensor, out: torch.Tensor):
