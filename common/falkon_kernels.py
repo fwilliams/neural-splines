@@ -243,13 +243,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         from torch.utils.dlpack import to_dlpack
         from torch.utils.dlpack import from_dlpack
 
-        X2 = X2.T.contiguous()  # This is passed in transposed... ugh
-
-        # Convert X1 and X2 to CuPy arrays.
-        x1cp = cp.fromDlpack(to_dlpack(X1))
-        x2cp = cp.fromDlpack(to_dlpack(X2))
-        outcp = cp.fromDlpack(to_dlpack(out))
-
         kernel_code = r'''
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
         #define ONE (DTYPE) (1.0)
@@ -303,11 +296,22 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         kernel_code = kernel_code.replace("DTYPE", str_dtype)
         kernel = cp.RawKernel(kernel_code, 'stable_kernel')
 
+        X2 = X2.T.contiguous()  # This is passed in transposed... ugh
+
+        # Convert X1 and X2 to CuPy arrays.
+        x1cp = cp.fromDlpack(to_dlpack(X1))
+        x2cp = cp.fromDlpack(to_dlpack(X2))
+        outcp = cp.fromDlpack(to_dlpack(out))
+
         pt_dim = X1.shape[1]
         dims = X1.shape[0], X2.shape[0]
         threads = (16, 16)  # TODO: Maybe hardcoding this is bad
         blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
-        kernel(threads, blocks, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
+
+        print(x1cp.shape, x2cp.shape, outcp.shape)
+        print(dims[0], dims[1], pt_dim)
+
+        kernel(threads, blocks, (x1cp, x2cp, outcp, float(self.variance), dims[0], dims[1], pt_dim))
         out = from_dlpack(outcp.toDlpack())
 
     def _apply_sparse(self, X1: SparseTensor, X2: SparseTensor, out: torch.Tensor):
