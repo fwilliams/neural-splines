@@ -306,7 +306,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         pt_dim = int(X1.shape[1])
         dims = int(X1.shape[0]), int(X2.shape[0])
-        threads = (16, 16)  # TODO: Maybe hardcoding this is bad
+        threads = (64, 64)  # TODO: Maybe hardcoding this is bad
         blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
 
         print(x1cp.shape, x2cp.shape, outcp.shape)
