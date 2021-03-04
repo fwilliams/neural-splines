@@ -254,7 +254,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
         #define ONE (DTYPE) (1.0)
         extern "C" __global__
-        void stable_kernel1(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, const int N, int M, int D) {
+        void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, const int N, int M, int D) {
             const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
             const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
 
