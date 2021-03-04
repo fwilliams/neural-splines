@@ -254,17 +254,17 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
         #define ONE (DTYPE) (1.0)
         extern "C" __global__
-        void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, DTYPE variance, const int N, int M, int D) {
+        void stable_kernel1(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, const int N, int M, int D) {
             const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
             const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
-    
+
             if (I >= N || J >= M) {
                 return;
             }
-    
+
             DTYPE norm_x = (DTYPE) 0.0; //normf(D, &x1[I*D]);
             DTYPE norm_y = (DTYPE) 0.0; //normf(D, &x2[J*D]);
-    
+
             #pragma unroll 
             for (int k = 0; k < D; k += 1) {
                 norm_x = fma(x1[I * D + k], x1[I * D + k], norm_x);
@@ -272,29 +272,30 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
             }
             norm_x = sqrt(norm_x);
             norm_y = sqrt(norm_y);
-    
+
             DTYPE arg1 = (DTYPE) 0.0;
             DTYPE arg2 = (DTYPE) 0.0;
-    
+
             #pragma unroll
             for (int k = 0; k < D; k += 1) {
                 DTYPE x1_ik = x1[I * D + k];
                 DTYPE x2_jk = x2[J * D + k];
                 DTYPE a1 = norm_y * x1_ik - norm_x * x2_jk;
                 DTYPE a2 = norm_y * x1_ik + norm_x * x2_jk;
-    
+
                 arg1 = fma(a1, a1, arg1);
                 arg2 = fma(a2, a2, arg2);
             }
             arg1 = sqrt(arg1);
             arg2 = sqrt(arg2);
-    
+
             DTYPE angle = 2.0 * atan2(arg1, arg2);
-            
+
             DTYPE norm_xy = norm_x * norm_y;
             DTYPE cos_angle = cos(angle);
             DTYPE sin_angle = sin(angle);
-            DTYPE K = norm_xy * (sin_angle + (ONE + variance) * (PI - angle) * cos_angle) / PI;
+            DTYPE opv = ONE + (DTYPE)(variance);
+            DTYPE K = norm_xy * (sin_angle + opv * (PI - angle) * cos_angle) / PI;
             out[I * M + J] = K;
         }
         '''
