@@ -95,12 +95,12 @@ print(x1cp.flags, x2cp.flags, outcp.flags)
 
 pt_dim = int(X1.shape[1])
 dims = int(X1.shape[0]), int(X2.shape[0])
-threads = (cmd_args.threads, cmd_args.threads)  # TODO: Maybe hardcoding this is bad
-blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
+threads_per_block = (cmd_args.threads, cmd_args.threads)  # TODO: Maybe hardcoding this is bad
+blocks_in_grid = tuple((dims[i] + threads_per_block[i] - 1) // threads_per_block[i] for i in range(2))
 
 print(x1cp.shape, x2cp.shape, outcp.shape)
 print(dims[0], dims[1], pt_dim)
 
-kernel(blocks, threads, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
+kernel(blocks_in_grid, threads_per_block, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
 # out = from_dlpack(outcp.toDlpack())
 print(out)
