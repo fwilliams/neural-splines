@@ -1,13 +1,19 @@
+import argparse
 import cupy as cp
 from torch.utils.dlpack import to_dlpack
 from torch.utils.dlpack import from_dlpack
 import torch
 
+argparser = argparse.ArgumentParser()
+argparser.add_argument("N", type=int, help="Number of samples")
+argparser.add_argument("threads", type=int, help="Number of cuda threads (along an axis) per block")
+cmd_args = argparser.parse_args()
+
 print("CuPy Stream", cp.cuda.get_current_stream())
 print("Pytorch Stream", torch.cuda.current_stream())
-X1 = torch.rand(25_0, 4).to('cuda')
-X2 = torch.rand(25_0, 4).to('cuda')
-out = torch.rand(25_0, 25_0).to('cuda')
+X1 = torch.rand(cmd_args.N, 4).to('cuda')
+X2 = torch.rand(cmd_args.N, 4).to('cuda')
+out = torch.rand(cmd_args.N, cmd_args.N).to('cuda')
 
 
 kernel_code_2 = r'''
@@ -89,7 +95,7 @@ print(x1cp.flags, x2cp.flags, outcp.flags)
 
 pt_dim = int(X1.shape[1])
 dims = int(X1.shape[0]), int(X2.shape[0])
-threads = (16, 16)  # TODO: Maybe hardcoding this is bad
+threads = (cmd_args.threads, cmd_args.threads)  # TODO: Maybe hardcoding this is bad
 blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
 
 print(x1cp.shape, x2cp.shape, outcp.shape)
