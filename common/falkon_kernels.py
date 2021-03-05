@@ -315,6 +315,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
         print("OUT STRIDE", out.stride())
+        print("OUT MEM FMT", out.memory_format())
         if out.is_contiguous():
             print("HERE")
             outcp = cp.fromDlpack(to_dlpack(out))
