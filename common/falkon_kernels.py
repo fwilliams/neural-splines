@@ -254,7 +254,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         if self.debug:
             print(f"NeuralTangentKernel._apply(X1={X1.shape}, X2={X2.shape}, out={out.shape})")
         import cupy as cp
-        from torch.utils.dlpack import to_dlpack
+        from torch.utils.dlpack import to_dlpack, from_dlpack
 
         kernel_code = r'''
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
@@ -314,7 +314,11 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # Convert X1 and X2 to CuPy arrays.
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
-        outcp = cp.fromDlpack(to_dlpack(out))
+
+        if out.is_contiguous():
+            outcp = cp.fromDlpack(to_dlpack(out))
+        else:
+            outcp = cp.zeros(out.shape[0], out.shape[1])
         print(x1cp.flags, x2cp.flags, outcp.flags)
         print("IS CONTIG??", out.is_contiguous())
 
@@ -327,6 +331,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print(dims[0], dims[1], pt_dim)
 
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
+        if not out.is_contiguous():
+            out[:, :] = from_dlpack(outcp.toDlpack())
         # out = from_dlpack(outcp.toDlpack())
         print(out)
         rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
