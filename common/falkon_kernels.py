@@ -318,7 +318,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
         xi, xj = X1[rand_idx_i].detach().cpu().numpy(), X2[rand_idx_j].detach().cpu().numpy()
         nxi, nxj = np.linalg.norm(xi), np.linalg.norm(xj)
-        angle1, angle2 = np.linalg.norm(nxj * xi - nxi * xj) + np.linalg.norm(nxj * xi + nxi * xj)
+        angle1, angle2 = np.linalg.norm(nxj * xi - nxi * xj), np.linalg.norm(nxj * xi + nxi * xj)
         angle = 2.0 * np.arctan2(angle1, angle2)
         kij = nxi * nxj * (np.sin(angle) + (1.0 + self.variance) * (np.pi - angle) * np.cos(angle)) / np.pi
         print(np.abs(kij - out[rand_idx_i, rand_idx_j]))
