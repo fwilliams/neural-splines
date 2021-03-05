@@ -3,6 +3,8 @@ from torch.utils.dlpack import to_dlpack
 from torch.utils.dlpack import from_dlpack
 import torch
 
+print("CuPy Stream", cp.cuda.get_current_stream())
+print("Pytorch Stream", torch.cuda.current_stream())
 X1 = torch.rand(25_000, 4)
 X2 = torch.rand(25_000, 4)
 out = torch.rand(25_000, 25_000)
