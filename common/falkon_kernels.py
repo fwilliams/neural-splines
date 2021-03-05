@@ -316,8 +316,10 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         x2cp = cp.fromDlpack(to_dlpack(X2))
 
         if out.is_contiguous():
+            print("HERE")
             outcp = cp.fromDlpack(to_dlpack(out))
         else:
+            print("OUT COPY")
             outcp = cp.zeros((out.shape[0], out.shape[1]))
         # print(x1cp.flags, x2cp.flags, outcp.flags)
         # print("IS CONTIG??", out.is_contiguous())
@@ -332,6 +334,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
         if not out.is_contiguous():
+            print("OUT COPY 2")
             out[:, :] = from_dlpack(outcp.toDlpack())
             del outcp
         # out = from_dlpack(outcp.toDlpack())
