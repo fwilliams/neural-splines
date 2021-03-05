@@ -295,6 +295,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         kernel_code = kernel_code.replace("DTYPE", str_dtype)
         kernel = cp.RawKernel(kernel_code, 'stable_kernel')
 
+        out.pin_memory()
         X2 = X2.T.contiguous()  # This is passed in transposed... ugh
 
         # Convert X1 and X2 to CuPy arrays.
