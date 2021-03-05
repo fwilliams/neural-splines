@@ -18,7 +18,7 @@ X2 = torch.rand(cmd_args.N, 4).to('cuda')
 out = torch.rand(cmd_args.N, cmd_args.N).to('cuda')
 print("Done creating tensors", flush=True)
 
-kernel_code_2 = r'''
+kernel_code = r'''
 #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
 #define ONE (DTYPE) (1.0)
 extern "C" __global__
@@ -67,23 +67,6 @@ void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double va
     out[I * M + J] = K;
 }
 '''
-
-kernel_code = r'''
-#define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
-#define ONE (DTYPE) (1.0)
-extern "C" __global__
-void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const int N, int M, int D) {
-    const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
-    const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
-
-    if (I >= N || J >= M) {
-        return;
-    }
-
-
-    out[I * M + J] = 3.14159;
-}
-'''
 str_dtype = "float" if X1.dtype == torch.float32 else "double"
 kernel_code = kernel_code.replace("DTYPE", str_dtype)
 print("Compiling cuda kernel...")
@@ -104,6 +87,7 @@ blocks_in_grid = tuple((dims[i] + threads_per_block[i] - 1) // threads_per_block
 print(x1cp.shape, x2cp.shape, outcp.shape)
 print(dims[0], dims[1], pt_dim)
 
-kernel(blocks_in_grid, threads_per_block, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
+variance = 1.0
+kernel(blocks_in_grid, threads_per_block, (x1cp, x2cp, outcp, variance, dims[0], dims[1], pt_dim))
 # out = from_dlpack(outcp.toDlpack())
 print(out)
