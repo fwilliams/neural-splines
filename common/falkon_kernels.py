@@ -210,18 +210,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         if self.debug:
             print(f"NeuralTangentKernel._keops_mmv_impl(X1={X1.shape}, X2={X2.shape}, v, kernel, out, opt)")
 
-        # import pykeops.torch as keops
-        # N, D = X1.shape
-        # T = v.shape[1]
-        # device = X1.device
-        # backend = 'GPU'
-        # dtype = _keops_dtype(X1.dtype)
-        #
-        # if out is None:
-        #     # noinspection PyArgumentList
-        #     out = torch.empty(N, T, dtype=X1.dtype, device=device,
-        #                       pin_memory=(backend != 'CPU') and (device.type == 'cpu'))
-
         theta = 'two * Atan2(Norm2(Norm2(Y) * X - Norm2(X) * Y), Norm2(Norm2(Y) * X + Norm2(X) * Y))'
         norm_xy = '(Norm2(X) * Norm2(Y))'
         j01 = f'({norm_xy} * (Sin({theta}) + (one + variance) * (pi - {theta}) * Cos({theta})))'
@@ -240,13 +228,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
                       torch.tensor([1.0]).to(dtype=X1.dtype, device=X1.device),
                       torch.tensor([2.0]).to(dtype=X1.dtype, device=X1.device)]
 
-        # fn = keops.Genred(formula, aliases,
-        #                   reduction_op='Sum', axis=1,
-        #                   dtype=dtype, dtype_acc=opt.keops_acc_dtype,
-        #                   sum_scheme=opt.keops_sum_scheme)
-        # variables = [X1, X2, v] + other_vars
-        # out = fn(*variables, out=out, backend=backend)
-        # return out
         return self.keops_mmv(X1, X2, v, out, formula, aliases, other_vars, opt)
 
     def _decide_mmv_impl(self, X1, X2, v, opt):
@@ -335,6 +316,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         x2cp = cp.fromDlpack(to_dlpack(X2))
         outcp = cp.fromDlpack(to_dlpack(out))
         print(x1cp.flags, x2cp.flags, outcp.flags)
+        print("IS CONTIG??", out.is_contiguous())
 
         pt_dim = int(X1.shape[1])
         dims = int(X1.shape[0]), int(X2.shape[0])
