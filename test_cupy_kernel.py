@@ -5,9 +5,9 @@ import torch
 
 print("CuPy Stream", cp.cuda.get_current_stream())
 print("Pytorch Stream", torch.cuda.current_stream())
-X1 = torch.rand(25_00, 4).to('cuda')
-X2 = torch.rand(25_00, 4).to('cuda')
-out = torch.rand(25_00, 25_00).to('cuda')
+X1 = torch.rand(25_0, 4).to('cuda')
+X2 = torch.rand(25_0, 4).to('cuda')
+out = torch.rand(25_0, 25_0).to('cuda')
 
 
 kernel_code_2 = r'''
@@ -89,7 +89,7 @@ print(x1cp.flags, x2cp.flags, outcp.flags)
 
 pt_dim = int(X1.shape[1])
 dims = int(X1.shape[0]), int(X2.shape[0])
-threads = (64, 64)  # TODO: Maybe hardcoding this is bad
+threads = (16, 16)  # TODO: Maybe hardcoding this is bad
 blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
 
 print(x1cp.shape, x2cp.shape, outcp.shape)
