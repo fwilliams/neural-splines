@@ -101,6 +101,6 @@ blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
 print(x1cp.shape, x2cp.shape, outcp.shape)
 print(dims[0], dims[1], pt_dim)
 
-kernel(threads, blocks, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
+kernel(blocks, threads, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
 # out = from_dlpack(outcp.toDlpack())
 print(out)
