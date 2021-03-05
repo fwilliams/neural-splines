@@ -5,9 +5,9 @@ import torch
 
 print("CuPy Stream", cp.cuda.get_current_stream())
 print("Pytorch Stream", torch.cuda.current_stream())
-X1 = torch.rand(25_000, 4)
-X2 = torch.rand(25_000, 4)
-out = torch.rand(25_000, 25_000)
+X1 = torch.rand(25_000, 4).to('cuda')
+X2 = torch.rand(25_000, 4).to('cuda')
+out = torch.rand(25_000, 25_000).to('cuda')
 
 
 kernel_code = r'''
