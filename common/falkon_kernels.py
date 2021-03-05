@@ -318,7 +318,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         if out.is_contiguous():
             outcp = cp.fromDlpack(to_dlpack(out))
         else:
-            outcp = cp.zeros(out.shape[0], out.shape[1])
+            outcp = cp.zeros((out.shape[0], out.shape[1]))
         print(x1cp.flags, x2cp.flags, outcp.flags)
         print("IS CONTIG??", out.is_contiguous())
 
