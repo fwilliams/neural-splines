@@ -64,7 +64,7 @@ kernel_code = r'''
 #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
 #define ONE (DTYPE) (1.0)
 extern "C" __global__
-void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, const int N, int M, int D) {
+void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const int N, int M, int D) {
     const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -78,6 +78,8 @@ void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double va
 '''
 str_dtype = "float" if X1.dtype == torch.float32 else "double"
 kernel_code = kernel_code.replace("DTYPE", str_dtype)
+print("Compiling cuda kernel...")
+print(kernel_code)
 kernel = cp.RawKernel(kernel_code, 'stable_kernel')
 
 x1cp = cp.fromDlpack(to_dlpack(X1))
@@ -93,6 +95,6 @@ blocks = tuple((dims[i] + threads[i] - 1) // threads[i] for i in range(2))
 print(x1cp.shape, x2cp.shape, outcp.shape)
 print(dims[0], dims[1], pt_dim)
 
-kernel(threads, blocks, (x1cp, x2cp, outcp, 1.0, dims[0], dims[1], pt_dim))
+kernel(threads, blocks, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
 # out = from_dlpack(outcp.toDlpack())
 print(out)
