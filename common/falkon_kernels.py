@@ -333,6 +333,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # print(dims[0], dims[1], pt_dim)
 
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
+        print(outcp)
         if not out.is_contiguous():
             print("OUT COPY 2")
             out[:, :] = from_dlpack(outcp.toDlpack())
