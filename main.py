@@ -21,11 +21,13 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
 
     opts = falkon.FalkonOptions()
     opts.min_cuda_pc_size_64 = 1
+    opts.min_cuda_pc_size_32 = 1
     opts.cg_tolerance = stop_thresh
     # opts.cg_full_gradient_every = 10
     opts.debug = verbose
     opts.use_cpu = False
     opts.min_cuda_iter_size_64 = 1
+    opts.min_cuda_iter_size_32 = 1
 
     if kernel_type == "ntk":
         print("Using Neural Tangent Kernel")
