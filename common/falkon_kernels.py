@@ -214,7 +214,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         N, D = X1.shape
         T = v.shape[1]
         device = X1.device
-        backend = 'CUDA'
+        backend = 'GPU'
         dtype = _keops_dtype(X1.dtype)
 
         if out is None:
