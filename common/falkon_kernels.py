@@ -315,9 +315,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
         print("OUT STRIDE", out.stride())
-        print("OUT MEM FMT CONTIG?", out.is_contiguous(torch.memory_format.contiguous_format))
-        print("OUT MEM FMT CHAN LST?", out.is_contiguous(torch.memory_format.channels_last))
-        print("OUT MEM FMT PRES_FT?", out.is_contiguous(torch.memory_format.preserve_format))
+        print("OUT MEM FMT CONTIG?", out.is_contiguous(torch.contiguous_format))
+        print("OUT MEM FMT CHAN LST?", out.is_contiguous(torch.channels_last))
         if out.is_contiguous():
             print("HERE")
             outcp = cp.fromDlpack(to_dlpack(out))
