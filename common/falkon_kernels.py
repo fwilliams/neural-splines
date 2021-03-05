@@ -241,7 +241,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
             print(f"NeuralTangentKernel._apply(X1={X1.shape}, X2={X2.shape}, out={out.shape})")
         import cupy as cp
         from torch.utils.dlpack import to_dlpack
-        from torch.utils.dlpack import from_dlpack
 
         kernel_code = r'''
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
