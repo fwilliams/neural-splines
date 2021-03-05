@@ -10,7 +10,7 @@ X2 = torch.rand(25_000, 4).to('cuda')
 out = torch.rand(25_000, 25_000).to('cuda')
 
 
-kernel_code = r'''
+kernel_code_2 = r'''
 #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
 #define ONE (DTYPE) (1.0)
 extern "C" __global__
@@ -57,6 +57,23 @@ void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double va
     DTYPE opv = ONE + (DTYPE)(variance);
     DTYPE K = norm_xy * (sin_angle + opv * (PI - angle) * cos_angle) / PI;
     out[I * M + J] = K;
+}
+'''
+
+kernel_code = r'''
+#define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
+#define ONE (DTYPE) (1.0)
+extern "C" __global__
+void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, const int N, int M, int D) {
+    const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
+    const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+    if (I >= N || J >= M) {
+        return;
+    }
+
+
+    out[I * M + J] = 3.14159;
 }
 '''
 str_dtype = "float" if X1.dtype == torch.float32 else "double"
