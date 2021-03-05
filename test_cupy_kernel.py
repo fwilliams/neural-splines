@@ -11,10 +11,12 @@ cmd_args = argparser.parse_args()
 
 print("CuPy Stream", cp.cuda.get_current_stream())
 print("Pytorch Stream", torch.cuda.current_stream())
+
+print("Creating tensors...", flush=True)
 X1 = torch.rand(cmd_args.N, 4).to('cuda')
 X2 = torch.rand(cmd_args.N, 4).to('cuda')
 out = torch.rand(cmd_args.N, cmd_args.N).to('cuda')
-
+print("Done creating tensors", flush=True)
 
 kernel_code_2 = r'''
 #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
@@ -85,8 +87,9 @@ void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const int N, in
 str_dtype = "float" if X1.dtype == torch.float32 else "double"
 kernel_code = kernel_code.replace("DTYPE", str_dtype)
 print("Compiling cuda kernel...")
-print(kernel_code)
+print(kernel_code, flush=True)
 kernel = cp.RawKernel(kernel_code, 'stable_kernel')
+kernel.compile()
 
 x1cp = cp.fromDlpack(to_dlpack(X1))
 x2cp = cp.fromDlpack(to_dlpack(X2))
