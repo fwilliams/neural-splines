@@ -312,9 +312,16 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print(x1cp.shape, x2cp.shape, outcp.shape)
         print(dims[0], dims[1], pt_dim)
 
-        kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, 1.0, dims[0], dims[1], pt_dim))
-        out = from_dlpack(outcp.toDlpack())
+        kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
+        # out = from_dlpack(outcp.toDlpack())
         print(out)
+        rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
+        xi, xj = X1[rand_idx_i].detach().cpu().numpy(), X2[rand_idx_j].detach().cpu().numpy()
+        nxi, nxj = np.linalg.norm(xi), np.linalg.norm(xj)
+        angle1, angle2 = np.linalg.norm(nxj * xi - nxi * xj) + np.linalg.norm(nxj * xi + nxi * xj)
+        angle = 2.0 * np.arctan2(angle1, angle2)
+        kij = nxi * nxj * (np.sin(angle) + (1.0 + self.variance) * (np.pi - angle) * np.cos(angle)) / np.pi
+        print(np.abs(kij - out[rand_idx_i, rand_idx_j]))
 
     def _apply_sparse(self, X1: SparseTensor, X2: SparseTensor, out: torch.Tensor):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse apply")
