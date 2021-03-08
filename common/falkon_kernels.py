@@ -305,8 +305,18 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
             out[I * M + J] = K;
         }
         '''
-        str_dtype = "float" if X1.dtype == torch.float32 else "double"
-        cupy_dtype = cp.float32 if X1.dtype == torch.float32 else cp.float64
+        assert X1.dtype == X2.dtype == out.dtype
+        if X1.dtype == torch.float32:
+            str_dtype = "float"
+            cupy_dtype = cp.float32
+            torch_dtype = torch.float32
+        elif X1.dtype == torch.float64:
+            str_dtype = "double"
+            cupy_dtype = cp.float64
+            torch_dtype = torch.float64
+        else:
+            raise ValueError("Invalid dtype must be float32 or float64")
+
         print("DEVICE ORDINAL", X1.device.index)
 
         kernel_code = kernel_code.replace("DTYPE", str_dtype)
@@ -317,18 +327,29 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # Convert X1 and X2 to CuPy arrays.
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
+        outcp = cp.fromDlpack(to_dlpack(out))
+
+        print("X1 SHAPE", X1.shape)
+        print("X1 STRIDE", X1.strides)
+        print("X1 IS CONTIG?", X1.is_contiguous())
+
+        print("X2 SHAPE", X2.shape)
+        print("X2 STRIDE", X2.strides)
+        print("X2 IS CONTIG?", X2.is_contiguous())
+
         print("OUT SHAPE", out.shape)
         print("OUT STRIDE", out.stride())
         print("OUT IS CONTIG?", out.is_contiguous())
-        outcp = cp.fromDlpack(to_dlpack(out))
+
         print("OUT CUPY SHAPE", outcp.shape)
         print("OUT CUPY STRIDE", outcp.strides)
         print("OUT CUPY FLAGS?", outcp.flags)
+
         if out.is_contiguous():
-            print("COPYING OUT FROM DLPACK TENSOR")
+            print("out is contiguous, using dlpack tensor shared memory")
             outcp = cp.fromDlpack(to_dlpack(out))
         else:
-            print("INTIIAZLING CUPY OUT AS ZERO ARRAY")
+            print("out is not contiguous, making a copy")
             outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
         print(x1cp.flags, x2cp.flags, outcp.flags)
 
@@ -344,8 +365,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # print("OUT CUPY\n", outcp)
         if not out.is_contiguous():
             print("COPYING CUPY OUT TO PYTORCH")
-            # out.copy_(from_dlpack(outcp.toDlpack()))
-            out.data[:, :] = from_dlpack(outcp.toDlpack())
+            out.copy_(from_dlpack(outcp.toDlpack()))
+            # out.data[:, :] = from_dlpack(outcp.toDlpack())
             del outcp
         print("OUT PYTORCH\n", out)
         rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
