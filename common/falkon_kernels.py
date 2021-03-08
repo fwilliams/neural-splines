@@ -362,10 +362,14 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
         # print("OUT CUPY\n", outcp)
         if not out.is_contiguous():
-            print("COPYING CUPY OUT TO PYTORCH")
-            out.copy_(from_dlpack(outcp.toDlpack()))
+            pass
+            # print("COPYING CUPY OUT TO PYTORCH")
+            # out.copy_(from_dlpack(outcp.toDlpack()))
             # out.data[:, :] = from_dlpack(outcp.toDlpack())
-            del outcp
+            # del outcp
+        print("COPYING CUPY OUT TO PYTORCH")
+        out.copy_(from_dlpack(outcp.toDlpack()))
+        del outcp
         print("OUT PYTORCH\n", out)
         rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
         xi, xj = X1[rand_idx_i].detach().cpu().numpy(), X2[rand_idx_j].detach().cpu().numpy()
