@@ -347,7 +347,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         if out.is_contiguous():
             print("out is contiguous, using dlpack tensor shared memory")
-            outcp = cp.fromDlpack(to_dlpack(out))
+            # outcp = cp.fromDlpack(to_dlpack(out))
+            outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
         else:
             print("out is not contiguous, making a copy")
             outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
