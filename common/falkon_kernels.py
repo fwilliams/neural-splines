@@ -305,7 +305,10 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
             out[I * M + J] = K;
         }
         '''
-        assert X1.dtype == X2.dtype == out.dtype
+        assert X1.dtype == X2.dtype == out.dtype, "X1, X2, and out don't have the same dtype"
+        assert X1.device == X2.device == out.device, "X1, X2, and out are not on the same device"
+        assert out.device.index is not None, "None device index"
+
         if X1.dtype == torch.float32:
             str_dtype = "float"
             cupy_dtype = cp.float32
@@ -328,7 +331,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
         print("ALLOCATING CUPY ARRAY")
-        outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
+        with cp.cuda.Device(out.device.index):
+            outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
         # outcp = cp.fromDlpack(to_dlpack(out))
 
         print("X1 SHAPE", X1.shape)
