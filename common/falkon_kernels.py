@@ -333,7 +333,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("ALLOCATING CUPY ARRAY")
         with cp.cuda.Device(out.device.index):
             outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
-        # outcp = cp.fromDlpack(to_dlpack(out))
 
         print("X1 SHAPE", X1.shape)
         print("X1 STRIDE", X1.stride())
@@ -360,8 +359,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("COPYING CUPY OUT TO PYTORCH")
         print("OUT CUPY\n", outcp[:25_000, :25_000])
         out_dlpack = from_dlpack(outcp.toDlpack())
-        # out.copy_(out_dlpack)
-        out[:, :] = out_dlpack
+        out.copy_(out_dlpack)
+        # out[:, :] = out_dlpack
 
         print("OUT PYTORCH\n", out)
 
