@@ -317,6 +317,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # Convert X1 and X2 to CuPy arrays.
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
+        print("OUT SHAPE", out.shape)
         print("OUT STRIDE", out.stride())
         print("OUT IS CONTIG?", out.is_contiguous())
         outcp = cp.fromDlpack(to_dlpack(out))
