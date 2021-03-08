@@ -249,6 +249,18 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
     def _prepare_sparse(self, X1: SparseTensor, X2: SparseTensor):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse prepare")
 
+    def extra_mem(self):
+        return {
+            # We transpose X2 in _apply
+            'nd': 0,
+            'md': 1,
+            # Norm results in prepare
+            'm': 0,
+            'n': 0,
+            # We do a copy in _apply
+            'nm': 1,
+        }
+
     def _apply(self, X1: torch.Tensor, X2: torch.Tensor, out: torch.Tensor):
         if self.debug:
             print(f"NeuralTangentKernel._apply(X1={X1.shape}, X2={X2.shape}, out={out.shape})")
