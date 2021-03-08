@@ -327,7 +327,9 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # Convert X1 and X2 to CuPy arrays.
         x1cp = cp.fromDlpack(to_dlpack(X1))
         x2cp = cp.fromDlpack(to_dlpack(X2))
-        outcp = cp.fromDlpack(to_dlpack(out))
+        print("ALLOCATING CUPY ARRAY")
+        outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
+        # outcp = cp.fromDlpack(to_dlpack(out))
 
         print("X1 SHAPE", X1.shape)
         print("X1 STRIDE", X1.stride())
@@ -343,12 +345,10 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         print("OUT CUPY SHAPE", outcp.shape)
         print("OUT CUPY STRIDE", outcp.strides)
-        print("OUT CUPY FLAGS?", outcp.flags)
 
-        print("ALLOCATING CUPY ARRAY")
-        outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
 
-        print(x1cp.flags, x2cp.flags, outcp.flags)
+
+        # print(x1cp.flags, x2cp.flags, outcp.flags)
 
         pt_dim = int(X1.shape[1])
         dims = int(X1.shape[0]), int(X2.shape[0])
