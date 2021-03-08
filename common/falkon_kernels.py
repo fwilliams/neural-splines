@@ -358,9 +358,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         threads_per_block = (16, 16)  # TODO: Maybe hardcoding this is bad
         blocks_per_grid = tuple((dims[i] + threads_per_block[i] - 1) // threads_per_block[i] for i in range(2))
 
-        # print(x1cp.shape, x2cp.shape, outcp.shape)
-        # print(dims[0], dims[1], pt_dim)
-
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
         # print("OUT CUPY\n", outcp)
         if not out.is_contiguous():
