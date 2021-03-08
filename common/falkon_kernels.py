@@ -260,7 +260,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
         #define ONE (DTYPE) (1.0)
         extern "C" __global__
-        void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, const int N, int M, int D) {
+        void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, 
+                           const int N, int M, int D) {
             const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
             const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -336,7 +337,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # print(dims[0], dims[1], pt_dim)
 
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
-        print("OUT CUPY\n", outcp)
+        # print("OUT CUPY\n", outcp)
         # if not out.is_contiguous():
         #     print("COPYING CUPY OUT TO PYTORCH")
         #     out.data = from_dlpack(outcp.toDlpack())
