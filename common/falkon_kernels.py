@@ -40,7 +40,6 @@ def _keops_dtype(dtype: torch.dtype) -> str:
         raise NotImplementedError("Data type %s not recognized." % (dtype))
 
 
-
 def k_spherical_laplace(x, xp, gamma, alpha):
     x = x.unsqueeze(1)  # [s1, 1, d]
     xp = xp.unsqueeze(0)  # [1, s2, d]
@@ -307,6 +306,9 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         }
         '''
         str_dtype = "float" if X1.dtype == torch.float32 else "double"
+        cupy_dtype = cp.float32 if X1.dtype == torch.float32 else cp.float64
+        print("DEVICE ORDINAL", X1.device.index)
+
         kernel_code = kernel_code.replace("DTYPE", str_dtype)
         kernel = cp.RawKernel(kernel_code, 'stable_kernel')
 
@@ -321,14 +323,13 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("OUT CUPY SHAPE", outcp.shape)
         print("OUT CUPY STRIDE", outcp.strides)
         print("OUT CUPY FLAGS?", outcp.flags)
-        # if out.is_contiguous():
-        #     print("COPYING OUT FROM DLPACK TENSOR")
-        #     outcp = cp.fromDlpack(to_dlpack(out))
-        # else:
-        #     print("INTIIAZLING OUT AS ZERO TENSOR TO COPY :(")
-        #     outcp = cp.zeros((out.shape[0], out.shape[1]))
-        # print(x1cp.flags, x2cp.flags, outcp.flags)
-        # print("IS CONTIG??", out.is_contiguous())
+        if out.is_contiguous():
+            print("COPYING OUT FROM DLPACK TENSOR")
+            outcp = cp.fromDlpack(to_dlpack(out))
+        else:
+            print("INTIIAZLING CUPY OUT AS ZERO ARRAY")
+            outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
+        print(x1cp.flags, x2cp.flags, outcp.flags)
 
         pt_dim = int(X1.shape[1])
         dims = int(X1.shape[0]), int(X2.shape[0])
@@ -339,12 +340,12 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         # print(dims[0], dims[1], pt_dim)
 
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
-        # print("OUT CUPY\n", outcp)
-        # if not out.is_contiguous():
-        #     print("COPYING CUPY OUT TO PYTORCH")
-        #     out.data = from_dlpack(outcp.toDlpack())
-        #     del outcp
-        # out = from_dlpack(outcp.toDlpack())
+        print("OUT CUPY\n", outcp)
+        if not out.is_contiguous():
+            print("COPYING CUPY OUT TO PYTORCH")
+            out.copy_(from_dlpack(outcp.toDlpack()))
+            del outcp
+        out = from_dlpack(outcp.toDlpack())
         print("OUT PYTORCH\n", out)
         rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
         xi, xj = X1[rand_idx_i].detach().cpu().numpy(), X2[rand_idx_j].detach().cpu().numpy()
