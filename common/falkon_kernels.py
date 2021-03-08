@@ -360,8 +360,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("COPYING CUPY OUT TO PYTORCH")
         # print("OUT CUPY\n", outcp)
         out_dlpack = from_dlpack(outcp.toDlpack())
-        out.copy_(out_dlpack)
-        # out[...] = out_dlpack
+        # out.copy_(out_dlpack)
+        out[:, :] = out_dlpack
 
         print("OUT PYTORCH\n", out)
 
