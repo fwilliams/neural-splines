@@ -358,9 +358,10 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
 
         print("COPYING CUPY OUT TO PYTORCH")
-        print("OUT CUPY\n", outcp)
+        # print("OUT CUPY\n", outcp)
         out_dlpack = from_dlpack(outcp.toDlpack())
         out.copy_(out_dlpack)
+        # out[...] = out_dlpack
 
         print("OUT PYTORCH\n", out)
 
