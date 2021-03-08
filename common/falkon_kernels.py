@@ -330,11 +330,11 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         outcp = cp.fromDlpack(to_dlpack(out))
 
         print("X1 SHAPE", X1.shape)
-        print("X1 STRIDE", X1.strides)
+        print("X1 STRIDE", X1.stride())
         print("X1 IS CONTIG?", X1.is_contiguous())
 
         print("X2 SHAPE", X2.shape)
-        print("X2 STRIDE", X2.strides)
+        print("X2 STRIDE", X2.stride())
         print("X2 IS CONTIG?", X2.is_contiguous())
 
         print("OUT SHAPE", out.shape)
