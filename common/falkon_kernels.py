@@ -318,6 +318,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("OUT STRIDE", out.stride())
         print("OUT IS CONTIG?", out.is_contiguous())
         outcp = cp.fromDlpack(to_dlpack(out))
+        print("OUT CUPY SHAPE", outcp.shape)
         print("OUT CUPY STRIDE", outcp.strides)
         print("OUT CUPY FLAGS?", outcp.flags)
         # if out.is_contiguous():
