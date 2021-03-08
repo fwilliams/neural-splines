@@ -346,19 +346,15 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("OUT CUPY SHAPE", outcp.shape)
         print("OUT CUPY STRIDE", outcp.strides)
 
-
-
-        # print(x1cp.flags, x2cp.flags, outcp.flags)
-
+        print("RUNNING KERNEL...")
         pt_dim = int(X1.shape[1])
         dims = int(X1.shape[0]), int(X2.shape[0])
         threads_per_block = (16, 16)  # TODO: Maybe hardcoding this is bad
         blocks_per_grid = tuple((dims[i] + threads_per_block[i] - 1) // threads_per_block[i] for i in range(2))
-
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
 
         print("COPYING CUPY OUT TO PYTORCH")
-        # print("OUT CUPY\n", outcp)
+        print("OUT CUPY\n", outcp[:25_000, :25_000])
         out_dlpack = from_dlpack(outcp.toDlpack())
         # out.copy_(out_dlpack)
         out[:, :] = out_dlpack
