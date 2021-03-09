@@ -6,35 +6,40 @@ import point_cloud_utils as pcu
 import time
 import torch
 from skimage.measure import marching_cubes
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import MiniBatchKMeans
+import open3d as o3d
 
 from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
 def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="spherical-laplace",
-              maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False):
-    opts = falkon.FalkonOptions()
-    opts.min_cuda_pc_size_64 = 1
-    opts.min_cuda_pc_size_32 = 1
-    opts.cg_tolerance = stop_thresh
-    # opts.cg_full_gradient_every = 10
-    opts.debug = verbose
-    opts.use_cpu = False
-    opts.min_cuda_iter_size_64 = 1
-    opts.min_cuda_iter_size_32 = 1
+              maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False, falkon_opts=None):
+
+    if falkon_opts is None:
+        falkon_opts = falkon.FalkonOptions()
+
+        # Always use cuda for everything
+        falkon_opts.min_cuda_pc_size_64 = 1
+        falkon_opts.min_cuda_pc_size_32 = 1
+        falkon_opts.min_cuda_iter_size_64 = 1
+        falkon_opts.min_cuda_iter_size_32 = 1
+        falkon_opts.use_cpu = False
+
+        falkon_opts.cg_tolerance = stop_thresh
+        falkon_opts.debug = verbose
 
     if kernel_type == "neural-spline":
         print("Using Neural Spline Kernel")
-        kernel = NeuralSplineKernel(variance=variance, opt=opts)
+        kernel = NeuralSplineKernel(variance=variance, opt=falkon_opts)
     elif kernel_type == "spherical-laplace":
         print("Using Spherical Laplace Kernel")
-        kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=opts)
+        kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=falkon_opts)
     else:
         raise ValueError(f"Invalid kernel_type {kernel_type}, expected one of 'neural-spline' or 'spherical-laplace'")
 
     fit_start_time = time.time()
-    model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=opts, maxiter=maxiters,
+    model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=falkon_opts, maxiter=maxiters,
                           center_selection=center_selector)
 
     model.fit(x, y)
@@ -88,7 +93,10 @@ def main():
     argparser.add_argument("--grid-size", "-g", type=int, default=128,
                            help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
                                 "function on a G x G x G voxel grid.")
-
+    argparser.add_argument("--voxel-downsample", action="store_true",
+                           help="Downsample input point cloud by averaging points and normals within a voxel grid, uses the "
+                                "--grid-size argument to determine the size of the grid. "
+                                "This can massively speed up reconstruction for very large point clouds")
     argparser.add_argument("--dtype", type=str, default="float64",
                            help="Scalar type of the data. Must be one of 'float32' or 'float64'. "
                                 "Warning: float32 may not work very well for complicated inputs.")
@@ -136,6 +144,13 @@ def main():
     np.random.seed(seed)
 
     x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud, dtype=dtype)
+    if args.voxel_downsample:
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(x.numpy())
+        pcd.normals = o3d.utility.Vector3dVector(n.numpy())
+        pc_down = pcd.voxel_down_sample(voxel_size=1.0/args.grid_size)
+        x = torch.from_numpy(np.asarray(pc_down.points)).to(dtype)
+        n = torch.from_numpy(np.asarray(pc_down.normals)).to(dtype)
     x, y = make_triples(x, n, args.eps)
     x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
