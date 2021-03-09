@@ -110,10 +110,6 @@ def main():
                                 "shape GxGxG where G is the --grid-width argument")
     argparser.add_argument("--save-points", action="store_true", help="Save input points and Nystrom samples")
 
-    argparser.add_argument("--blue-noise-nystrom", action="store_true",
-                           help="Generate Nyström samples by downsampling the input "
-                                "point cloud with a blue noise distribution")
-
     argparser.add_argument("--cg-max-iters", type=int, default=20,
                            help="Maximum number of conjugate gradient iterations.")
     argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
