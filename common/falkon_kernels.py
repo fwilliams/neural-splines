@@ -354,7 +354,8 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         # print("COPYING CUPY OUT TO PYTORCH")
         # print("OUT CUPY\n", outcp)
-        out_dlpack = torch.utils.dlpack.from_dlpack(outcp.toDlpack())
+        outcp_dlpack = outcp.toDlpack()
+        out_dlpack = torch.utils.dlpack.from_dlpack(outcp_dlpack)
         out.copy_(out_dlpack)
         # out[:, :] = out_dlpack
         # print("OUT PYTORCH\n", out)
