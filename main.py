@@ -6,19 +6,14 @@ import point_cloud_utils as pcu
 import time
 import torch
 from skimage.measure import marching_cubes
+from sklearn.cluster import KMeans
 
 from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
-def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace",
+def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="spherical-laplace",
               maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False):
-    if isinstance(num_ny, torch.Tensor):
-        selector = falkon.center_selection.FixedSelector(centers=num_ny, y_centers=None)
-        num_ny = num_ny[0].shape[0]
-    else:
-        selector = 'uniform'
-
     opts = falkon.FalkonOptions()
     opts.min_cuda_pc_size_64 = 1
     opts.min_cuda_pc_size_32 = 1
@@ -40,7 +35,7 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace",
 
     fit_start_time = time.time()
     model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=opts, maxiter=maxiters,
-                          center_selection=selector)
+                          center_selection=center_selector)
 
     model.fit(x, y)
     print(f"Fit model in {time.time() - fit_start_time} seconds")
@@ -85,12 +80,18 @@ def main():
     argparser.add_argument("--num-ny", type=int, default=-1,
                            help="Number of Nyström samples for kernel ridge regression. If negative, don't use "
                                 "Nyström sampling")
+    argparser.add_argument("--nystrom-mode", type=str, default="random",
+                           help="How to generate nystrom samples. Must be one of \n"
+                                "  'random': choose Nyström samples at random from the input\n"
+                                "  'blue-noise': downsample the input with blue noise to get Nyström samples\n"
+                                "  'k-means': use k-means clustering to generate Nyström samples")
     argparser.add_argument("--grid-size", "-g", type=int, default=128,
                            help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
                                 "function on a G x G x G voxel grid.")
 
     argparser.add_argument("--dtype", type=str, default="float64",
-                           help="Scalar type of the data. Must be one of 'float32' or 'float64'")
+                           help="Scalar type of the data. Must be one of 'float32' or 'float64'. "
+                                "Warning: float32 may not work very well for complicated inputs.")
 
     argparser.add_argument("--kernel", type=str, default="neural-spline",
                            help="Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'."
@@ -142,20 +143,31 @@ def main():
     x, y = make_triples(x, n, args.eps)
     x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
-    if args.blue_noise_nystrom:
+    if args.nystrom_mode == 'random':
+        print("Using Nyström samples chosen uniformly at random from the input...")
+        center_selector = 'uniform'
+        x_ny = None
+        ny_count = args.num_ny
+    elif args.nystrom_mode == 'blue-noise':
         print("Generating blue noise Nyström samples...")
-        seed = args.seed if args.seed > 0 else 0
         ny_idx = pcu.prune_point_cloud_poisson_disk(x.numpy(), args.num_ny, random_seed=seed)
         x_ny = x_homogeneous[ny_idx]
-        num_ny = x_ny
         ny_count = x_ny.shape[0]
+        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
+    elif args.nystrom_mode == 'k-means':
+        print("Generating k-means Nyström samples...")
+        k_means = KMeans(init='k-means++', n_clusters=args.num_ny, n_init=10)
+        k_means.fit(x.numpy())
+        x_ny = torch.from_numpy(k_means.cluster_centers_).to(x_homogeneous)
+        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
+        ny_count = x_ny.shape[0]
+        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     else:
-        x_ny = None
-        num_ny = args.num_ny if args.num_ny > 0 else x.shape[0]
-        ny_count = num_ny
+        raise ValueError(f"Invalid value {args.nystrom_mode} for --nystrom-mode. "
+                         f"Must be one of 'random', 'blue-noise' or 'k-means'")
 
-    print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
-    mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, maxiters=args.cg_max_iters,
+    print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nyström samples")
+    mdl = fit_model(x_homogeneous, y, args.penalty, ny_count, center_selector, maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                     variance=args.outer_layer_variance,
                     verbose=args.verbose)
