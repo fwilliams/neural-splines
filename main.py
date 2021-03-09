@@ -152,7 +152,7 @@ def main():
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif args.nystrom_mode == 'k-means':
         print("Generating k-means Nyström samples...")
-        k_means = MiniBatchKMeans(init='k-means++', n_clusters=args.num_ny, n_init=10, verbose=10)
+        k_means = MiniBatchKMeans(init='random', n_clusters=args.num_ny, n_init=10, verbose=10)
         k_means.fit(x.numpy())
         x_ny = torch.from_numpy(k_means.cluster_centers_).to(x_homogeneous)
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
