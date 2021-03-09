@@ -3,12 +3,13 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
+import cupy as cp
 import numpy as np
 import torch
-
 from falkon.kernels import Kernel, KeopsKernelMixin
 from falkon.options import FalkonOptions
 from falkon.sparse.sparse_tensor import SparseTensor
+from torch.utils.dlpack import to_dlpack, from_dlpack
 
 
 def extract_float(d):
@@ -264,8 +265,6 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
     def _apply(self, X1: torch.Tensor, X2: torch.Tensor, out: torch.Tensor):
         if self.debug:
             print(f"NeuralTangentKernel._apply(X1={X1.shape}, X2={X2.shape}, out={out.shape})")
-        import cupy as cp
-        from torch.utils.dlpack import to_dlpack, from_dlpack
 
         kernel_code = r'''
         #define PI (DTYPE) (3.1415926535897932384626433832795028841971693993751058209749445923078164062)
@@ -324,15 +323,11 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         if X1.dtype == torch.float32:
             str_dtype = "float"
             cupy_dtype = cp.float32
-            torch_dtype = torch.float32
         elif X1.dtype == torch.float64:
             str_dtype = "double"
             cupy_dtype = cp.float64
-            torch_dtype = torch.float64
         else:
             raise ValueError("Invalid dtype must be float32 or float64")
-
-        print("DEVICE ORDINAL", X1.device.index)
 
         kernel_code = kernel_code.replace("DTYPE", str_dtype)
         kernel = cp.RawKernel(kernel_code, 'stable_kernel')
@@ -340,28 +335,12 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         X2 = X2.T.contiguous()  # This is passed in transposed... ugh
 
         # Convert X1 and X2 to CuPy arrays.
-        x1cp = cp.fromDlpack(to_dlpack(X1))
-        x2cp = cp.fromDlpack(to_dlpack(X2))
+        x1cp = cp.fromDlpack(torch.utils.dlpack.to_dlpack(X1))
+        x2cp = cp.fromDlpack(torch.utils.dlpack.to_dlpack(X2))
         print("ALLOCATING CUPY ARRAY")
         with cp.cuda.Device(out.device.index):
             outcp = cp.zeros((out.shape[0], out.shape[1]), dtype=cupy_dtype)
 
-        print("X1 SHAPE", X1.shape)
-        print("X1 STRIDE", X1.stride())
-        print("X1 IS CONTIG?", X1.is_contiguous())
-
-        print("X2 SHAPE", X2.shape)
-        print("X2 STRIDE", X2.stride())
-        print("X2 IS CONTIG?", X2.is_contiguous())
-
-        print("OUT SHAPE", out.shape)
-        print("OUT STRIDE", out.stride())
-        print("OUT IS CONTIG?", out.is_contiguous())
-
-        print("OUT CUPY SHAPE", outcp.shape)
-        print("OUT CUPY STRIDE", outcp.strides)
-
-        print("RUNNING KERNEL...")
         pt_dim = int(X1.shape[1])
         dims = int(X1.shape[0]), int(X2.shape[0])
         threads_per_block = (16, 16)  # TODO: Maybe hardcoding this is bad
@@ -370,19 +349,19 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
 
         print("COPYING CUPY OUT TO PYTORCH")
         print("OUT CUPY\n", outcp[:25_000, :25_000])
-        out_dlpack = from_dlpack(outcp.toDlpack())
+        out_dlpack = from_dlpack(torch.utils.dlpack.outcp.toDlpack())
         out.copy_(out_dlpack)
         # out[:, :] = out_dlpack
 
         print("OUT PYTORCH\n", out)
 
-        rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
-        xi, xj = X1[rand_idx_i].detach().cpu().numpy(), X2[rand_idx_j].detach().cpu().numpy()
-        nxi, nxj = np.linalg.norm(xi), np.linalg.norm(xj)
-        angle1, angle2 = np.linalg.norm(nxj * xi - nxi * xj), np.linalg.norm(nxj * xi + nxi * xj)
-        angle = 2.0 * np.arctan2(angle1, angle2)
-        kij = nxi * nxj * (np.sin(angle) + (1.0 + self.variance) * (np.pi - angle) * np.cos(angle)) / np.pi
-        print(np.abs(kij - out[rand_idx_i, rand_idx_j].item()))
+        # rand_idx_i, rand_idx_j = np.random.randint(X1.shape[0]), np.random.randint(X2.shape[0])
+        # xi, xj = X1[rand_idx_i].detach().cpu().numpy(), X2[rand_idx_j].detach().cpu().numpy()
+        # nxi, nxj = np.linalg.norm(xi), np.linalg.norm(xj)
+        # angle1, angle2 = np.linalg.norm(nxj * xi - nxi * xj), np.linalg.norm(nxj * xi + nxi * xj)
+        # angle = 2.0 * np.arctan2(angle1, angle2)
+        # kij = nxi * nxj * (np.sin(angle) + (1.0 + self.variance) * (np.pi - angle) * np.cos(angle)) / np.pi
+        # print(np.abs(kij - out[rand_idx_i, rand_idx_j].item()))
 
     def _apply_sparse(self, X1: SparseTensor, X2: SparseTensor, out: torch.Tensor):
         raise NotImplementedError("NeuralTangentKernel does not implement sparse apply")
