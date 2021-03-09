@@ -6,7 +6,7 @@ import point_cloud_utils as pcu
 import time
 import torch
 from skimage.measure import marching_cubes
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 
 from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
@@ -152,7 +152,7 @@ def main():
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif args.nystrom_mode == 'k-means':
         print("Generating k-means Nyström samples...")
-        k_means = KMeans(init='k-means++', n_clusters=args.num_ny, n_init=10)
+        k_means = MiniBatchKMeans(init='k-means++', n_clusters=args.num_ny, n_init=10)
         k_means.fit(x.numpy())
         x_ny = torch.from_numpy(k_means.cluster_centers_).to(x_homogeneous)
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
