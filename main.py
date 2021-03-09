@@ -154,7 +154,7 @@ def main():
         ny_count = num_ny
 
     print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
-    mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
+    mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                     verbose=args.verbose)
     grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, args.scale, bbox_normalized, bbox_input, dtype=dtype)
