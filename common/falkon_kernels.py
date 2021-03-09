@@ -351,6 +351,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         threads_per_block = (16, 16)  # TODO: Maybe hardcoding this is bad
         blocks_per_grid = tuple((dims[i] + threads_per_block[i] - 1) // threads_per_block[i] for i in range(2))
         kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
+        cp.cuda.stream.get_current_stream().synchronize()
 
         # print("COPYING CUPY OUT TO PYTORCH")
         # print("OUT CUPY\n", outcp)
