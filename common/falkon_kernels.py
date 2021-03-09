@@ -337,7 +337,7 @@ class NeuralTangentKernel(Kernel, KeopsKernelMixin, ABC, DirectKernelMixin):
         print("X2.T CONTIG", X2.T.is_contiguous())
         print("OUT CONTIG", out.is_contiguous())
         X1 = X1.contiguous()
-        X2 = X2.T.contiguous()  # This is passed in transposed... ugh
+        X2 = X2.T.contiguous()  # This is passed in transposed
 
         # Convert X1 and X2 to CuPy arrays.
         # print("ALLOCATING CUPY ARRAY")
