@@ -7,11 +7,11 @@ import time
 import torch
 from skimage.measure import marching_cubes
 
-from common.falkon_kernels import ArcCosineKernel, LaplaceKernelSphere, NeuralTangentKernel, DirectKernelSolver
+from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
-def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falkon",
+def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace",
               maxiters=20, stop_thresh=1e-7, verbose=False):
     if isinstance(num_ny, torch.Tensor):
         selector = falkon.center_selection.FixedSelector(centers=num_ny, y_centers=None)
@@ -29,28 +29,20 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace", mode="falk
     opts.min_cuda_iter_size_64 = 1
     opts.min_cuda_iter_size_32 = 1
 
-    if kernel_type == "ntk":
-        print("Using Neural Tangent Kernel")
-        kernel = NeuralTangentKernel(variance=1.0, opt=opts)
+    if kernel_type == "neural-spline":
+        print("Using Neural Spline Kernel")
+        kernel = NeuralSplineKernel(variance=1.0, opt=opts)
     elif kernel_type == "spherical-laplace":
-        print("Using Spherical Laplacian Kernel")
+        print("Using Spherical Laplace Kernel")
         kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=opts)
-    elif kernel_type == "arccosine":
-        print("Using Arccosine Kernel")
-        kernel = ArcCosineKernel(opt=opts)
     else:
-        raise ValueError("Invalid kernel_type")
+        raise ValueError(f"Invalid kernel_type {kernel_type}, expected one of 'neural-spline' or 'spherical-laplace'")
 
     opts.debug = False
 
     fit_start_time = time.time()
-    if mode == "falkon":
-        model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=opts, maxiter=maxiters,
-                              center_selection=selector)
-    elif mode == "direct":
-        model = DirectKernelSolver(kernel=kernel, penalty=penalty)
-    else:
-        raise ValueError("'mode' must be one of 'direct' or 'falkon'")
+    model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=opts, maxiter=maxiters,
+                          center_selection=selector)
 
     model.fit(x, y)
     print(f"Fit model in {time.time() - fit_start_time} seconds")
@@ -102,8 +94,10 @@ def main():
     argparser.add_argument("--dtype", type=str, default="float64",
                            help="Scalar type of the data. Must be one of 'float32' or 'float64'")
 
-    argparser.add_argument("--kernel", type=str, default="spherical-laplace",
-                           help="Which kernel to use. Must be one of 'spherical-laplace' or 'arccosine'.")
+    argparser.add_argument("--kernel", type=str, default="neural-spline",
+                           help="Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'."
+                                "The spherical laplace is a good approximation to the Neural Tangent Kernel"
+                                "(see https://arxiv.org/pdf/2007.01580.pdf for details)")
 
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
 
