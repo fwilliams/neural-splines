@@ -1,4 +1,4 @@
 [submodule "libs/falkon"]
 	path = libs/falkon
 	url = git@github.com:fwilliams/falkon.git
-	branch = kml3
+	branch = kml
