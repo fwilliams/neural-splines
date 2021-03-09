@@ -125,6 +125,7 @@ def main():
                            help="Maximum number of conjugate gradient iterations.")
     argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
+    argparser.add_argument("--cuda-in", action="store_true", help="Use cuda buffers for inputs")
     args = argparser.parse_args()
 
     if args.dtype == "float64":
@@ -157,6 +158,12 @@ def main():
         x_ny = None
         num_ny = args.num_ny if args.num_ny > 0 else x.shape[0]
         ny_count = num_ny
+
+    if args.cuda_in:
+        x = x.to('cuda')
+        y = y.to('cuda')
+        if x_ny is not None:
+            x_ny = x_ny.to('cuda')
 
     print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
     mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, mode="falkon", maxiters=args.cg_max_iters,
