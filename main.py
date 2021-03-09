@@ -12,7 +12,7 @@ from common import make_triples, load_normalized_point_cloud, scale_bounding_box
 
 
 def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace",
-              maxiters=20, stop_thresh=1e-7, verbose=False):
+              maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False):
     if isinstance(num_ny, torch.Tensor):
         selector = falkon.center_selection.FixedSelector(centers=num_ny, y_centers=None)
         num_ny = num_ny[0].shape[0]
@@ -31,14 +31,12 @@ def fit_model(x, y, penalty, num_ny, kernel_type="spherical-laplace",
 
     if kernel_type == "neural-spline":
         print("Using Neural Spline Kernel")
-        kernel = NeuralSplineKernel(variance=1.0, opt=opts)
+        kernel = NeuralSplineKernel(variance=variance, opt=opts)
     elif kernel_type == "spherical-laplace":
         print("Using Spherical Laplace Kernel")
         kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=opts)
     else:
         raise ValueError(f"Invalid kernel_type {kernel_type}, expected one of 'neural-spline' or 'spherical-laplace'")
-
-    opts.debug = False
 
     fit_start_time = time.time()
     model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=opts, maxiter=maxiters,
@@ -119,6 +117,9 @@ def main():
                            help="Maximum number of conjugate gradient iterations.")
     argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
 
+    argparser.add_argument("--outer-layer-variance", type=float, default=1.0,
+                           help="Variance of the outer layer of the neural network from which the neural "
+                                "spline kernel arises from")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
     args = argparser.parse_args()
 
@@ -156,6 +157,7 @@ def main():
     print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nystrom samples")
     mdl = fit_model(x_homogeneous, y, args.penalty, num_ny, maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
+                    variance=args.outer_layer_variance,
                     verbose=args.verbose)
     grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, args.scale, bbox_normalized, bbox_input, dtype=dtype)
 
