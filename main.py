@@ -6,10 +6,10 @@ import point_cloud_utils as pcu
 import time
 import torch
 from skimage.measure import marching_cubes
-from sklearn.cluster import MiniBatchKMeans
 import open3d as o3d
 
 from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
+from common.kmeans import kmeans
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
@@ -86,15 +86,17 @@ def main():
                            help="Number of Nyström samples for kernel ridge regression. If negative, don't use "
                                 "Nyström sampling")
     argparser.add_argument("--nystrom-mode", type=str, default="random",
-                           help="How to generate nystrom samples. Must be one of \n"
-                                "  'random': choose Nyström samples at random from the input\n"
-                                "  'blue-noise': downsample the input with blue noise to get Nyström samples\n"
-                                "  'k-means': use k-means clustering to generate Nyström samples")
+                           help="How to generate nystrom samples. Must be either (1) "
+                                "'random': choose Nyström samples at random from the input, (2)"
+                                "'blue-noise': downsample the input with blue noise to get Nyström samples, or (3)"
+                                "'k-means': use k-means clustering to generate Nyström samples "
+                                "(Warning: K-means is very slow on large inputs)")
     argparser.add_argument("--grid-size", "-g", type=int, default=128,
                            help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
                                 "function on a G x G x G voxel grid.")
     argparser.add_argument("--voxel-downsample", action="store_true",
-                           help="Downsample input point cloud by averaging points and normals within a voxel grid, uses the "
+                           help="Downsample input point cloud by averaging points and normals "
+                                "within a voxel grid, uses the "
                                 "--grid-size argument to determine the size of the grid. "
                                 "This can massively speed up reconstruction for very large point clouds")
     argparser.add_argument("--dtype", type=str, default="float64",
@@ -167,9 +169,7 @@ def main():
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif args.nystrom_mode == 'k-means':
         print("Generating k-means Nyström samples...")
-        k_means = MiniBatchKMeans(init='random', n_clusters=args.num_ny, n_init=10, verbose=10)
-        k_means.fit(x.numpy())
-        x_ny = torch.from_numpy(k_means.cluster_centers_).to(x_homogeneous)
+        _, x_ny = kmeans(x, args.num_ny)
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
