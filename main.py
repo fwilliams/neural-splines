@@ -170,10 +170,10 @@ def main():
     elif args.nystrom_mode == 'k-means':
         print("Generating k-means Nyström samples...")
         _, x_ny = kmeans(x, args.num_ny)
+        torch.save(x_ny, "nystrom.pth")
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
-        torch.save(x_ny, "nystrom.pth")
     else:
         raise ValueError(f"Invalid value {args.nystrom_mode} for --nystrom-mode. "
                          f"Must be one of 'random', 'blue-noise' or 'k-means'")
