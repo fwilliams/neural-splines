@@ -39,8 +39,6 @@ def kmeans(x, k, num_iters=10):
 
         # Divide by the number of points per cluster:
         Ncl = torch.bincount(cl, minlength=k).type_as(c).view(k, 1)
-        print(Ncl.min(), Ncl.max())
         c /= Ncl  # in-place division to compute the average
 
-    print(c.max(), c.min())
     return cl, c
