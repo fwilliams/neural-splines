@@ -42,4 +42,5 @@ def kmeans(x, k, num_iters=10):
         print(Ncl.min(), Ncl.max())
         c /= Ncl  # in-place division to compute the average
 
+    print(c.max(), c.min())
     return cl, c
