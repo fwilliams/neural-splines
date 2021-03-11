@@ -153,7 +153,7 @@ def main():
 
     x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud, dtype=dtype)
     if x.shape[0] > args.voxel_downsample_threshold:
-        x, n = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
+        x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
     x, y = make_triples(x, n, args.eps)
