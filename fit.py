@@ -6,7 +6,6 @@ import point_cloud_utils as pcu
 import time
 import torch
 from skimage.measure import marching_cubes
-import open3d as o3d
 
 from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
 from common.kmeans import kmeans
@@ -54,7 +53,7 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
     plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
     grid_size = np.round(bbox_normalized[1] * grid_width).astype(np.int64)
 
-    print(f"Evaluating function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
+    print(f"Evaluating reconstructed function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
     xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:grid_size[0] * 1j,
                                                   plt_range_min[1]:plt_range_max[1]:grid_size[1] * 1j,
                                                   plt_range_min[2]:plt_range_max[2]:grid_size[2] * 1j]],
@@ -75,58 +74,65 @@ def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_in
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
-    argparser.add_argument("--out", type=str, default="recon.ply", help="Path to file to save reconstructed mesh in.")
-
-    argparser.add_argument("--eps", type=float, default=0.01,
-                           help="Amount to perturb input points around surface to construct occupancy point cloud. "
+    argparser.add_argument("eps", type=float,
+                           help="Perturbation amount for finite differencing. To approximate the gradient of the "
+                                "function, we sample points +/- eps along the normal direction. "
                                 "A reasonable value for this is half the minimum distance between any two points.")
-    argparser.add_argument("--penalty", type=float, default=0.0,
-                           help="Regularization penalty for kernel ridge regression.")
-    argparser.add_argument("--num-ny", type=int, default=-1,
-                           help="Number of Nyström samples for kernel ridge regression. If negative, don't use "
-                                "Nyström sampling")
-    argparser.add_argument("--nystrom-mode", type=str, default="random",
-                           help="How to generate nystrom samples. Must be either (1) "
-                                "'random': choose Nyström samples at random from the input, (2)"
-                                "'blue-noise': downsample the input with blue noise to get Nyström samples, or (3)"
-                                "'k-means': use k-means clustering to generate Nyström samples "
-                                "(Warning: K-means is very slow on large inputs)")
-    argparser.add_argument("--grid-size", "-g", type=int, default=128,
-                           help="Size G of the voxel grid to reconstruct on. I.e. we sample the reconstructed "
-                                "function on a G x G x G voxel grid.")
-    argparser.add_argument("--voxel-downsample", action="store_true",
-                           help="Downsample input point cloud by averaging points and normals "
-                                "within a voxel grid, uses the "
-                                "--grid-size argument to determine the size of the grid. "
-                                "This can massively speed up reconstruction for very large point clouds")
+    argparser.add_argument("num_nystrom_samples", type=int, default=-1,
+                           help="Number of Nyström samples to use for kernel ridge regression. "
+                                "If negative, don't use Nyström sampling."
+                                "This is the number of basis centers to use to represent the final function. "
+                                "If this value is too small, the reconstruction can miss details in the input. "
+                                "Values between 10-100 times sqrt(N) (where N = number of input points) are "
+                                "generally good depending on the complexity of the input shape.")
+
+    argparser.add_argument("--grid-size", type=int, default=128,
+                           help="When reconstructing the mesh, use --grid-size voxels along the longest side of the "
+                                "bounding box. Default is 128.")
+    argparser.add_argument("--scale", type=float, default=1.1,
+                           help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
+                                " the diameter of the bounding box of the input points. Defaults is 1.1.")
+
+    argparser.add_argument("--regularization", type=float, default=1e-7,
+                           help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
+    argparser.add_argument("--nystrom-mode", type=str, default="k-means",
+                           help="How to generate nystrom samples. Default is 'k-means'. Must be one of "
+                                "(1) 'random': choose Nyström samples at random from the input, "
+                                "(2) 'blue-noise': downsample the input with blue noise to get Nyström samples, or "
+                                "(3) 'k-means': use k-means clustering to generate Nyström samples. "
+                                "Default is 'k-means'")
+    argparser.add_argument("--voxel-downsample-threshold", type=int, default=150_000,
+                           help="If the number of input points is greater than this value, downsample it by "
+                                "averaging points and normals within voxels on a grid. The size of the voxel grid is "
+                                "determined via the --grid-size argument. Default is 150_000."
+                                "NOTE: This can massively speed up reconstruction for very large point clouds and "
+                                "generally won't throw away any details.")
+    argparser.add_argument("--kernel", type=str, default="neural-spline",
+                           help="Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'. "
+                                "Default is 'neural-spline'."
+                                "NOTE: The spherical laplace is a good approximation to the neural tangent kernel"
+                                "(see https://arxiv.org/pdf/2007.01580.pdf for details)")
+    argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
+
+    argparser.add_argument("--out", type=str, default="recon.ply", help="Path to file to save reconstructed mesh in.")
+    argparser.add_argument("--save-grid", action="store_true",
+                           help="If set, save the function evaluated on a voxel grid to {out}.grid.npy "
+                                "where out is the value of the --out argument.")
+    argparser.add_argument("--save-points", action="store_true",
+                           help="If set, save the tripled input points, their occupancies, and the Nyström samples "
+                                "to an npz file named {out}.pts.npz where out is the value of the --out argument.")
+
+    argparser.add_argument("--cg-max-iters", type=int, default=20,
+                           help="Maximum number of conjugate gradient iterations. Default is 20.")
+    argparser.add_argument("--cg-stop-thresh", type=float, default=1e-5,
+                           help="Stop threshold for the conjugate gradient algorithm. Default is 1e-5.")
+
     argparser.add_argument("--dtype", type=str, default="float64",
                            help="Scalar type of the data. Must be one of 'float32' or 'float64'. "
                                 "Warning: float32 may not work very well for complicated inputs.")
-
-    argparser.add_argument("--kernel", type=str, default="neural-spline",
-                           help="Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'."
-                                "The spherical laplace is a good approximation to the Neural Tangent Kernel"
-                                "(see https://arxiv.org/pdf/2007.01580.pdf for details)")
-
-    argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
-
-    argparser.add_argument("--scale", type=float, default=1.1,
-                           help="If set to a positive value, will normalize the input point cloud so that it is "
-                                "centered in a bounding cube of shape [-l, l]^ where l = plot_range - padding. "
-                                "Here plot_range is the --plot-range argument and padding is this argument.")
-
-    argparser.add_argument("--save-grid", action="store_true",
-                           help="If set, save a .npy file with the function evaluated on a voxel grid of "
-                                "shape GxGxG where G is the --grid-width argument")
-    argparser.add_argument("--save-points", action="store_true", help="Save input points and Nystrom samples")
-
-    argparser.add_argument("--cg-max-iters", type=int, default=20,
-                           help="Maximum number of conjugate gradient iterations.")
-    argparser.add_argument("--cg-stop-thresh", type=float, default=1e-2, help="Stop threshold for conjugate gradient")
-
     argparser.add_argument("--outer-layer-variance", type=float, default=1.0,
                            help="Variance of the outer layer of the neural network from which the neural "
-                                "spline kernel arises from")
+                                "spline kernel arises from. Default is 1.0.")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
     args = argparser.parse_args()
 
@@ -146,30 +152,26 @@ def main():
     np.random.seed(seed)
 
     x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud, dtype=dtype)
-    if args.voxel_downsample:
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(x.numpy())
-        pcd.normals = o3d.utility.Vector3dVector(n.numpy())
-        pc_down = pcd.voxel_down_sample(voxel_size=1.0/args.grid_size)
-        x = torch.from_numpy(np.asarray(pc_down.points)).to(dtype)
-        n = torch.from_numpy(np.asarray(pc_down.normals)).to(dtype)
+    if x.shape[0] > args.voxel_downsample_threshold:
+        x, n = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x, n)
+
     x, y = make_triples(x, n, args.eps)
     x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
     if args.nystrom_mode == 'random':
-        print("Using Nyström samples chosen uniformly at random from the input...")
+        print("Using Nyström samples chosen uniformly at random from the input.")
         center_selector = 'uniform'
         x_ny = None
-        ny_count = args.num_ny
+        ny_count = args.num_nystrom_samples
     elif args.nystrom_mode == 'blue-noise':
-        print("Generating blue noise Nyström samples...")
-        ny_idx = pcu.prune_point_cloud_poisson_disk(x.numpy(), args.num_ny, random_seed=seed)
+        print("Generating blue noise Nyström samples.")
+        ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), args.num_nystrom_samples, random_seed=seed)
         x_ny = x_homogeneous[ny_idx]
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif args.nystrom_mode == 'k-means':
-        print("Generating k-means Nyström samples...")
-        _, x_ny = kmeans(x, args.num_ny)
+        print("Generating k-means Nyström samples.")
+        _, x_ny = kmeans(x, args.num_nystrom_samples)
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
@@ -177,8 +179,8 @@ def main():
         raise ValueError(f"Invalid value {args.nystrom_mode} for --nystrom-mode. "
                          f"Must be one of 'random', 'blue-noise' or 'k-means'")
 
-    print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nyström samples")
-    mdl = fit_model(x_homogeneous, y, args.penalty, ny_count, center_selector, maxiters=args.cg_max_iters,
+    print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nyström samples.")
+    mdl = fit_model(x_homogeneous, y, args.regularization, ny_count, center_selector, maxiters=args.cg_max_iters,
                     kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                     variance=args.outer_layer_variance,
                     verbose=args.verbose)
