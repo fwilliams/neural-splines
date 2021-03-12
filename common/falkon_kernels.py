@@ -215,8 +215,8 @@ class LaplaceKernelSphere(Kernel, KeopsKernelMixin, ABC):
     def __init__(self, alpha, gamma, opt: Optional[FalkonOptions] = None):
         super().__init__("LaplaceKernelSphere", self.kernel_type, opt)
         self.debug = opt.debug if opt is not None else False
-        self.alpha = torch.tensor(extract_float(alpha), dtype=torch.float64)
-        self.gamma = torch.tensor(extract_float(gamma), dtype=torch.float64)
+        self.alpha = extract_float(alpha)
+        self.gamma = extract_float(gamma)
 
     def extra_mem(self):
         return {
