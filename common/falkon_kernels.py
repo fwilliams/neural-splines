@@ -236,7 +236,7 @@ class LaplaceKernelSphere(Kernel, KeopsKernelMixin, ABC):
 
         theta = 'two * Atan2(Norm2(Norm2(Y) * X - Norm2(X) * Y), Norm2(Norm2(Y) * X + Norm2(X) * Y))'
         norm_xy = '(Norm2(X) * Norm2(Y))'
-        formula = f'({norm_xy} * (Exp(alpha * Powf(one - Cos({theta}), gamma)))'
+        formula = f'({norm_xy} * (Exp(alpha * Powf(one - Cos({theta}), gamma))) * v'
         aliases = [
             'X = Vi(%d)' % (X1.shape[1]),
             'Y = Vj(%d)' % (X2.shape[1]),
@@ -377,3 +377,4 @@ class LaplaceKernelSphere(Kernel, KeopsKernelMixin, ABC):
 
     def __repr__(self):
         return self.__str__()
+
