@@ -39,9 +39,9 @@ the fitting process:
   * `--scale <SCALE>`: Reconstruct the surface in a bounding box whose diameter is --scale times bigger than the diameter of the bounding box of the input points. Defaults is 1.1.
   * `--regularization <REGULARIZATION>`: Regularization penalty for kernel ridge regression. Default is 1e-7.
   * `--nystrom-mode <NYSTROM_MODE>`: How to generate nystrom samples. Default is 'k-means'. Must be one of
-        - 'random': choose Nyström samples at random from the input
-        - 'blue-noise': downsample the input with blue noise to get Nyström samples
-        - 'k-means': use k-means  clustering to generate Nyström samples
+    - 'random': choose Nyström samples at random from the input
+    - 'blue-noise': downsample the input with blue noise to get Nyström samples
+    - 'k-means': use k-means  clustering to generate Nyström samples
   * `--voxel-downsample-threshold <VOXEL_DOWNSAMPLE_THRESHOLD>`: If the number of input points is greater than this value, downsample it by averaging points and normals within voxels on a grid. The size of the voxel grid is determined via the --grid-size argument. Default is 150_000.NOTE: This can massively  speed up reconstruction for very large point clouds and generally won't throw away any details.
   * `--kernel <KERNEL>`: Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'. Default is 'neural-spline'.NOTE: The spherical laplace is a good approximation to the neural tangent kernel(see https://arxiv.org/pdf/2007.01580.pdf for details)
   * `--seed <SEED>`: Random number generator seed to use.
