@@ -59,8 +59,11 @@ def make_triples(x, n, eps):
 
 
 def load_normalized_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
-    v, f, n, _ = pcu.read_ply(filename, dtype=np.float64)
+    v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
+    return normalize_point_cloud(v, n, min_norm_normal, dtype)
 
+
+def normalize_point_cloud(v, n, min_norm_normal=1e-5, dtype=torch.float64):
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
     # We use this mask to remove bad vertices
     mask = np.linalg.norm(n, axis=-1) > min_norm_normal
