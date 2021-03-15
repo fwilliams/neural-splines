@@ -85,10 +85,10 @@ def main():
                                 "If this value is too small, the reconstruction can miss details in the input. "
                                 "Values between 10-100 times sqrt(N) (where N = number of input points) are "
                                 "generally good depending on the complexity of the input shape.")
-
-    argparser.add_argument("--grid-size", type=int, default=128,
-                           help="When reconstructing the mesh, use --grid-size voxels along the longest side of the "
+    argparser.add_argument("grid_size", type=int,
+                           help="When reconstructing the mesh, use this many voxels along the longest side of the "
                                 "bounding box. Default is 128.")
+
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
                                 " the diameter of the bounding box of the input points. Defaults is 1.1.")
