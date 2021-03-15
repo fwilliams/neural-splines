@@ -1,5 +1,6 @@
 # Neural Splines: Fitting 3D Surfaces with Inifinitely-Wide Neural Networks
-This repository will contain the official implementation of [Neural Splines](https://arxiv.org/abs/2006.13782).
+![Neural Splines Teaser](https://github.com/fwilliams/neural-splines/blob/master/teaser.png)
+This repository contains the official implementation of [Neural Splines](https://arxiv.org/abs/2006.13782).
 
 ## System Requirements
 Neural Splines uses [FALKON](https://arxiv.org/abs/1705.10958), a state-of-the-art kernel ridge regression solver to fit 
