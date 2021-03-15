@@ -1,6 +1,6 @@
 # Neural Splines: Fitting 3D Surfaces with Inifinitely-Wide Neural Networks
 ![Neural Splines Teaser](https://github.com/fwilliams/neural-splines/blob/master/teaser.png)
-This repository contains the official implementation of [Neural Splines](https://arxiv.org/abs/2006.13782).
+This repository contains the official implementation of the CVPR 2021 (Oral) paper [Neural Splines: Fitting 3D Surfaces with Infinitely-Wide Neural Networks](https://arxiv.org/abs/2006.13782).
 
 ## System Requirements
 Neural Splines uses [FALKON](https://arxiv.org/abs/1705.10958), a state-of-the-art kernel ridge regression solver to fit 
@@ -42,7 +42,7 @@ the fitting process:
     - 'blue-noise': downsample the input with blue noise to get Nyström samples
     - 'k-means': use k-means  clustering to generate Nyström samples
   * **`--voxel-downsample-threshold <VOXEL_DOWNSAMPLE_THRESHOLD>`**: If the number of input points is greater than this value, downsample it by averaging points and normals within voxels on a grid. The size of the voxel grid is determined via the --grid-size argument. Default is 150_000.NOTE: This can massively  speed up reconstruction for very large point clouds and generally won't throw away any details.
-  * **`--kernel <KERNEL>`**: Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'. Default is 'neural-spline'.NOTE: The spherical laplace is a good approximation to the neural tangent kernel(see https://arxiv.org/pdf/2007.01580.pdf for details)
+  * **`--kernel <KERNEL>`**: Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'. Default is 'neural-spline'.NOTE: The spherical laplace is a good approximation to the neural tangent kernel (see [this paper](https://arxiv.org/pdf/2007.01580.pdf) for details)
   * **`--seed <SEED>`**: Random number generator seed to use.
   * **`--out <OUT>`**:  Path to file to save reconstructed mesh in.
   * **`--save-grid`**: If set, save the function evaluated on a voxel grid to {out}.grid.npy where out is the value of the --out argument.
