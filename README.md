@@ -52,5 +52,3 @@ the fitting process:
   * **`--outer-layer-variance <OUTER_LAYER_VARIANCE>`**: Variance of the outer layer of the neural network from which the neural spline kernel arises from. Default is 1.0.
   * **`--verbose`**: If set, spam your terminal with debug information
 
-
-
