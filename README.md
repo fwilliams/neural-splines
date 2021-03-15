@@ -30,8 +30,7 @@ where
   a more accurate reconstruction but increase runtime and CPU memory usage. Generally good values for this are between 
   `10*sqrt(N)` and `100*sqrt(N)` where `N` is the number of input points.
 * **`<grid-size>`** is the number of voxel cells along the longest axis of the bounding box on which the reconstructed 
-  function gets sampled. For example if the bounding box of the input shape has dimensions `[1, 0.5, 0.5]` and 
-  `<grid_size>` is `128`, we will sample the function on a `128x64x64` voxel grid before extracting a mesh.
+  function gets sampled. For example if `<grid_size>` is `128` and the bounding box of the input pointcloud has dimensions `[1, 0.5, 0.5]`, then we will sample the function on a `128x64x64` voxel grid before extracting a mesh.
   
 Additionally, `fit.py` accepts the following optional arguments which can alter the behavior and performance of
 the fitting process:
