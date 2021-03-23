@@ -7,7 +7,7 @@ import time
 import torch
 from skimage.measure import marching_cubes
 
-from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel
+from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel, LinearAngleKernel
 from common.kmeans import kmeans
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
@@ -34,6 +34,8 @@ def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="spherical-lap
     elif kernel_type == "spherical-laplace":
         print("Using Spherical Laplace Kernel")
         kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=falkon_opts)
+    elif kernel_type == "linear-angle":
+        kernel = LinearAngleKernel(opt=falkon_opts)
     else:
         raise ValueError(f"Invalid kernel_type {kernel_type}, expected one of 'neural-spline' or 'spherical-laplace'")
 
@@ -108,8 +110,8 @@ def main():
                                 "NOTE: This can massively speed up reconstruction for very large point clouds and "
                                 "generally won't throw away any details.")
     argparser.add_argument("--kernel", type=str, default="neural-spline",
-                           help="Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'. "
-                                "Default is 'neural-spline'."
+                           help="Which kernel to use. Must be one of 'neural-spline', 'spherical-laplace',"
+                                " or 'linear-angle'. Default is 'neural-spline'."
                                 "NOTE: The spherical laplace is a good approximation to the neural tangent kernel"
                                 "(see https://arxiv.org/pdf/2007.01580.pdf for details)")
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
