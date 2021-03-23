@@ -453,7 +453,7 @@ class LinearAngleKernel(Kernel, KeopsKernelMixin, ABC):
         __MUL_NORM_DEFINE__
         
         extern "C" __global__
-        void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out, const double variance, 
+        void stable_kernel(const DTYPE* x1, const DTYPE* x2, DTYPE* out,
                            const int N, int M, int D) {
             const int I = (blockIdx.x * blockDim.x) + threadIdx.x;
             const int J = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -536,7 +536,7 @@ class LinearAngleKernel(Kernel, KeopsKernelMixin, ABC):
         dims = int(X1.shape[0]), int(X2.shape[0])
         threads_per_block = (16, 16)  # TODO: Maybe hardcoding this is bad
         blocks_per_grid = tuple((dims[i] + threads_per_block[i] - 1) // threads_per_block[i] for i in range(2))
-        kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, self.variance, dims[0], dims[1], pt_dim))
+        kernel(blocks_per_grid, threads_per_block, (x1cp, x2cp, outcp, dims[0], dims[1], pt_dim))
         cp.cuda.stream.get_current_stream().synchronize()  # Need to synchronize so we can copy to PyTorch
 
         # print("COPYING CUPY OUT TO PYTORCH")
