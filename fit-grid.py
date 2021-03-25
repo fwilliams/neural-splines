@@ -6,32 +6,7 @@ import torch
 from skimage.measure import marching_cubes
 
 from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter, \
-    normalize_point_cloud, generate_nystrom_samples, fit_model
-
-
-# def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input, dtype=torch.float64):
-#     scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, scale)
-#     scaled_bbi_min, scaled_bbi_size = scale_bounding_box_diameter(bbox_input, scale)
-#
-#     plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
-#     grid_size = np.round(bbox_normalized[1] * grid_width).astype(np.int64)
-#
-#     print(f"Evaluating reconstructed function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
-#     xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:grid_size[0] * 1j,
-#                                                   plt_range_min[1]:plt_range_max[1]:grid_size[1] * 1j,
-#                                                   plt_range_min[2]:plt_range_max[2]:grid_size[2] * 1j]],
-#                      axis=-1)
-#     xgrid = torch.from_numpy(xgrid).to(dtype)
-#     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
-#
-#     ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
-#
-#     size_per_voxel = scaled_bbi_size / (grid_size - 1.0)
-#
-#     v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(), level=0.0, spacing=size_per_voxel)
-#     v += scaled_bbi_min
-#
-#     return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
+    generate_nystrom_samples, fit_model
 
 
 def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized, scale, out,
@@ -51,8 +26,8 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
 
     # print("RELATIVE BBOX", cell_bbmin_rel, cell_bbmax_rel)
 
-    cell_vox_min = np.ceil(cell_bbmin_rel * full_grid_size).astype(np.int)
-    cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size).astype(np.int)
+    cell_vox_min = np.ceil(cell_bbmin_rel * full_grid_size).astype(np.int32)
+    cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size).astype(np.int32)
     print(" ", cell_vox_min, cell_vox_max)
     cell_vox_size = cell_vox_max - cell_vox_min
 
@@ -176,19 +151,20 @@ def main():
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
-                # print("ijk CELL BBOX", cell_bb_origin, cell_bb_size)
-                # print("ijk FULL BBOX", scaled_bbn_min, scaled_bbn_size)
                 cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
                                                                                    1.0 + args.overlap)
+                cell_pad_bb_max = cell_bb_origin + cell_pad_bb_size
+
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
                 mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
-
                 if mask_ijk.sum() <= 0:
                     continue
 
                 x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
-                x_ijk, n_ijk, bbox_ijk, bbox_normalized_ijk = normalize_point_cloud(x_ijk.numpy(), n_ijk.numpy(), dtype=dtype)
+                bbox_scale = 1.0 / np.max(cell_pad_bb_size)
+                bbox_translate = - 0.5 * (cell_pad_bb_max + cell_pad_bb_origin)
+                x_ijk = bbox_scale * (x_ijk + bbox_translate)
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
                 x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
@@ -196,6 +172,7 @@ def main():
                                                                                        args.num_nystrom_samples,
                                                                                        args.nystrom_mode,
                                                                                        seed)
+
                 print(f"Fitting model ({cell_i}, {cell_j}, {cell_k}) with {x_homogeneous_ijk.shape[0]} points "
                       f"using {ny_count_ijk} Nyström samples.")
                 mdl_ijk = fit_model(x_homogeneous_ijk, y_ijk, args.regularization, ny_count_ijk, center_selector_ijk,
@@ -205,8 +182,12 @@ def main():
                                     verbose=args.verbose)
                 fitted_models.append(mdl_ijk.to('cpu'))
                 count += 1
+
                 # model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized
                 # TODO: Saving is for debug only, still need to do full reconstruction
+
+                bb_recon_origin = bbox_scale * (cell_bb_origin + bbox_translate)
+                bbox_recon_size = bbox_scale * cell_bb_size
                 ygrid = reconstruct_on_grid(mdl_ijk, args.grid_size,
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
