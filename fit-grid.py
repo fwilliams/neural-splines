@@ -42,8 +42,12 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
 
     cell_bbmin_rel = cell_bbmin - full_bbmin
     cell_bbmax_rel = cell_bbmin_rel + cell_bbsize
+
+    print(cell_bbmin_rel, cell_bbmax_rel)
+
     cell_vox_min = np.ceil(cell_bbmax_rel * full_grid_size)
     cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size)
+    print(cell_vox_min, cell_vox_max)
     cell_vox_size = cell_vox_max - cell_vox_min
 
     plt_range_min, plt_range_max = cell_bbox_normalized[0], cell_bbox_normalized[0] + cell_bbox_normalized[1]
@@ -54,7 +58,7 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     xgrid = torch.from_numpy(xgrid).to(dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
     print(full_grid_size, cell_vox_size)
-    ygrid = model.predict(xgrid).reshape(cell_vox_size.astype(np.int))
+    ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int)))
     ygrid = ygrid.detach().cpu().numpy()
 
     return ygrid
