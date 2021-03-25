@@ -42,16 +42,24 @@ def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_n
     ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int)))
     ygrid = ygrid.detach().cpu().numpy()
 
-    print("out nnz", (out[cell_vox_min[0]:cell_vox_max[0],
-        cell_vox_min[1]:cell_vox_max[1],
-        cell_vox_min[2]:cell_vox_max[2]] > 0.0).sum())
+    nnz_mask = out[cell_vox_min[0]:cell_vox_max[0],
+               cell_vox_min[1]:cell_vox_max[1],
+               cell_vox_min[2]:cell_vox_max[2]] > 0.0
+
     print(cell_vox_max - cell_vox_min)
     print(out[cell_vox_min[0]:cell_vox_max[0],
-        cell_vox_min[1]:cell_vox_max[1],
-        cell_vox_min[2]:cell_vox_max[2]].shape)
+          cell_vox_min[1]:cell_vox_max[1],
+          cell_vox_min[2]:cell_vox_max[2]].shape)
     out[cell_vox_min[0]:cell_vox_max[0],
         cell_vox_min[1]:cell_vox_max[1],
-        cell_vox_min[2]:cell_vox_max[2]] = ygrid.astype(out.dtype)
+        cell_vox_min[2]:cell_vox_max[2]][~nnz_mask] = ygrid[~nnz_mask].astype(out.dtype)
+    out[cell_vox_min[0]:cell_vox_max[0],
+        cell_vox_min[1]:cell_vox_max[1],
+        cell_vox_min[2]:cell_vox_max[2]][nnz_mask] += ygrid[nnz_mask].astype(out.dtype)
+    out[cell_vox_min[0]:cell_vox_max[0],
+        cell_vox_min[1]:cell_vox_max[1],
+        cell_vox_min[2]:cell_vox_max[2]][nnz_mask] /= 2.0
+
 
     return ygrid
 
