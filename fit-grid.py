@@ -209,10 +209,10 @@ def main():
                                             dtype=dtype)
                 v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
 
-                pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
-                              v_ijk.astype(np.float32), f_ijk.astype(np.int32),
-                              n_ijk.astype(np.float32), c_ijk.astype(np.float32))
-                torch.save((mdl_ijk, x_ijk, y_ijk, x_ny_ijk), f"checkpoint_{cell_i}_{cell_j}_{cell_k}.pth")
+                # pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
+                #               v_ijk.astype(np.float32), f_ijk.astype(np.int32),
+                #               n_ijk.astype(np.float32), c_ijk.astype(np.float32))
+                # torch.save((mdl_ijk, x_ijk, y_ijk, x_ny_ijk), f"checkpoint_{cell_i}_{cell_j}_{cell_k}.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid, level=0.0)
     pcu.write_ply(f"recon.ply",
