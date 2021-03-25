@@ -144,7 +144,7 @@ def main():
     cell_bb_size = scaled_bbn_size / args.cells_per_axis
 
     count = 0
-    full_grid_size = np.round(scaled_bbn_size * args.grid_size).astype(np.int64)
+    full_grid_size = np.round(bbox_normalized * args.grid_size).astype(np.int64)
     out_grid = np.ones(full_grid_size, dtype=np.float32)
     print("full grid size is", full_grid_size)
 
