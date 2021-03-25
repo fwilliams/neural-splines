@@ -163,8 +163,8 @@ def main():
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
                 print(mask_ijk)
-                mask_ijk = np.max(mask_ijk, axis=-1)
-
+                mask_ijk = torch.min(mask_ijk, axis=-1)
+                print(mask_ijk)
                 x_ijk, n_ijk = x[mask_ijk], n[mask_ijk]
                 x_ijk, n_ijk, bbox_ijk, bbox_normalized_ijk = normalize_point_cloud(x_ijk, n_ijk, dtype=dtype)
 
