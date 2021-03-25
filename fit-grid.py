@@ -214,8 +214,7 @@ def main():
                                             scale=1.0 + args.overlap,
                                             out=out_grid,
                                             dtype=dtype)
-                v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
-
+                # v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
                 # pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
                 #               v_ijk.astype(np.float32), f_ijk.astype(np.int32),
                 #               n_ijk.astype(np.float32), c_ijk.astype(np.float32))
