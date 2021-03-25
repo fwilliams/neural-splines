@@ -34,7 +34,8 @@ from common import make_triples, load_normalized_point_cloud, scale_bounding_box
 #     return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
 
 
-def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized, scale, dtype=torch.float64):
+def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized, scale, out,
+                        dtype=torch.float64):
     full_bbmin, full_bbsize = full_bbox
     cell_bbmin, cell_bbsize = cell_bbox
 
@@ -65,6 +66,10 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     # print(full_grid_size, cell_vox_size)
     ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int)))
     ygrid = ygrid.detach().cpu().numpy()
+
+    out[cell_vox_min[0]:cell_vox_max[0],
+        cell_vox_min[1]:cell_vox_max[1],
+        cell_vox_min[2]:cell_vox_max[2]] = ygrid.astype(out.dtype)
 
     return ygrid
 
@@ -164,6 +169,9 @@ def main():
     cell_bb_size = scaled_bbn_size / args.cells_per_axis
 
     count = 0
+    full_grid_size = np.round(scaled_bbn_min * args.grid_size).astype(np.int64)
+    out_grid = np.ones(full_grid_size, dtype=np.float32)
+
     for cell_i in range(args.cells_per_axis):
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
@@ -203,14 +211,20 @@ def main():
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
                                             cell_bbox_normalized=bbox_normalized_ijk,
-                                            scale=1.0 + args.overlap, dtype=dtype)
+                                            scale=1.0 + args.overlap,
+                                            out=out_grid,
+                                            dtype=dtype)
                 v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
 
                 pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
                               v_ijk.astype(np.float32), f_ijk.astype(np.int32),
                               n_ijk.astype(np.float32), c_ijk.astype(np.float32))
                 torch.save((mdl_ijk, x_ijk, y_ijk, x_ny_ijk), f"checkpoint_{cell_i}_{cell_j}_{cell_k}.pth")
-
+    torch.save(out_grid, "out.grid.pth")
+    v, f, n, c = marching_cubes(out_grid, level=0.0)
+    pcu.write_ply(f"recon.ply",
+                  v.astype(np.float32), f.astype(np.int32),
+                  n.astype(np.float32), c.astype(np.float32))
 
 if __name__ == "__main__":
     main()
