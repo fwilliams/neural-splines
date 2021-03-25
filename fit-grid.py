@@ -34,7 +34,7 @@ from common import make_triples, load_normalized_point_cloud, scale_bounding_box
 #     return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
 
 
-def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized, dtype=torch.float64):
+def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized, scale, dtype=torch.float64):
     full_bbmin, full_bbsize = full_bbox
     cell_bbmin, cell_bbsize = cell_bbox
 
@@ -42,7 +42,7 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     # print("CELL BBOX", cell_bbmin, cell_bbsize)
 
     print("  full_bbsize, full_grid_width", full_bbsize, full_grid_width)
-    full_grid_size = np.round(full_bbsize * full_grid_width).astype(np.int64)
+    full_grid_size = np.round(full_bbsize / scale * full_grid_width).astype(np.int64)
     print("  full_grid_size", full_grid_size)
 
     cell_bbmin_rel = (cell_bbmin - full_bbmin) / full_bbsize
@@ -160,7 +160,7 @@ def main():
 
     # We're going to include the overlap padding in the final reconstruction.
     # TODO: Do a better version of this where we just include the overlap in the boundary cells
-    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, 1.0 + args.overlap)
+    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, args.scale)
     cell_bb_size = scaled_bbn_size / args.cells_per_axis
 
     count = 0
@@ -174,10 +174,11 @@ def main():
                                                                                    1.0 + args.overlap)
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
-                # print(mask_ijk)
                 mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
-                # print(mask_ijk)
-                # print((mask_ijk > 0).sum())
+
+                if mask_ijk.sum() <= 0:
+                    continue
+
                 x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
                 x_ijk, n_ijk, bbox_ijk, bbox_normalized_ijk = normalize_point_cloud(x_ijk.numpy(), n_ijk.numpy(), dtype=dtype)
 
@@ -201,7 +202,8 @@ def main():
                 ygrid = reconstruct_on_grid(mdl_ijk, args.grid_size,
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
-                                            cell_bbox_normalized=bbox_normalized_ijk)
+                                            cell_bbox_normalized=bbox_normalized_ijk,
+                                            scale=args.scale, dtype=dtype)
                 v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
 
                 pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
