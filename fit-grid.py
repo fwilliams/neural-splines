@@ -43,12 +43,12 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
 
     full_grid_size = np.round(full_bbsize * full_grid_width).astype(np.int64)
 
-    cell_bbmin_rel = cell_bbmin - full_bbmin
-    cell_bbmax_rel = cell_bbmin_rel + cell_bbsize
+    cell_bbmin_rel = (cell_bbmin - full_bbmin) / cell_bbsize
+    cell_bbmax_rel = (cell_bbmin + cell_bbsize - full_bbmin) / cell_bbsize
 
-    print(cell_bbmin_rel, cell_bbmax_rel)
+    print("RELATIVE BBOX", cell_bbmin_rel, cell_bbmax_rel)
 
-    cell_vox_min = np.ceil(cell_bbmax_rel * full_grid_size)
+    cell_vox_min = np.ceil(cell_bbmin_rel * full_grid_size)
     cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size)
     print(cell_vox_min, cell_vox_max)
     cell_vox_size = cell_vox_max - cell_vox_min
