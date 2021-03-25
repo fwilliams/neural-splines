@@ -121,7 +121,7 @@ def generate_nystrom_samples(x, num_samples, sampling_method, seed):
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif sampling_method == 'k-means':
         print("Generating k-means Nyström samples.")
-        _, x_ny = kmeans(x[:, :-1], num_samples)
+        _, x_ny = kmeans(x[:, :-1].contiguous(), num_samples)
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
