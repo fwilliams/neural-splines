@@ -163,7 +163,7 @@ def main():
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
                 print(mask_ijk)
-                mask_ijk = torch.min(mask_ijk, axis=-1)[0]
+                mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
                 print(mask_ijk)
                 print((mask_ijk > 0).sum())
                 x_ijk, n_ijk = x[mask_ijk], n[mask_ijk]
