@@ -187,7 +187,7 @@ def main():
                 count += 1
                 # model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized
                 # TODO: Saving is for debug only, still need to do full reconstruction
-                ygrid = reconstruct_on_grid(mdl_ijk, args.grid_width,
+                ygrid = reconstruct_on_grid(mdl_ijk, args.grid_size,
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
                                             cell_bbox_normalized=bbox_normalized_ijk)
