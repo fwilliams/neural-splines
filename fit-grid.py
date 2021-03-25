@@ -160,7 +160,7 @@ def main():
 
     # We're going to include the overlap padding in the final reconstruction.
     # TODO: Do a better version of this where we just include the overlap in the boundary cells
-    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, args.scale)
+    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, 1.0 + args.overlap)
     cell_bb_size = scaled_bbn_size / args.cells_per_axis
 
     count = 0
@@ -203,7 +203,7 @@ def main():
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
                                             cell_bbox_normalized=bbox_normalized_ijk,
-                                            scale=args.scale, dtype=dtype)
+                                            scale=1.0 + args.overlap, dtype=dtype)
                 v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
 
                 pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
