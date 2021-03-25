@@ -41,6 +41,7 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     # print("FULL BBOX", full_bbmin, full_bbsize)
     # print("CELL BBOX", cell_bbmin, cell_bbsize)
 
+    print(full_bbsize, full_grid_width)
     full_grid_size = np.round(full_bbsize * full_grid_width).astype(np.int64)
 
     cell_bbmin_rel = (cell_bbmin - full_bbmin) / cell_bbsize
