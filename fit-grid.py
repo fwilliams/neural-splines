@@ -169,7 +169,7 @@ def main():
     cell_bb_size = scaled_bbn_size / args.cells_per_axis
 
     count = 0
-    full_grid_size = np.round(scaled_bbn_min * args.grid_size).astype(np.int64)
+    full_grid_size = np.round(scaled_bbn_size * args.grid_size).astype(np.int64)
     out_grid = np.ones(full_grid_size, dtype=np.float32)
 
     for cell_i in range(args.cells_per_axis):
@@ -225,6 +225,7 @@ def main():
     pcu.write_ply(f"recon.ply",
                   v.astype(np.float32), f.astype(np.int32),
                   n.astype(np.float32), c.astype(np.float32))
+
 
 if __name__ == "__main__":
     main()
