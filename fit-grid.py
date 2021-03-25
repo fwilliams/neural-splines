@@ -51,8 +51,8 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
 
     # print("RELATIVE BBOX", cell_bbmin_rel, cell_bbmax_rel)
 
-    cell_vox_min = np.ceil(cell_bbmin_rel * full_grid_size)
-    cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size)
+    cell_vox_min = np.ceil(cell_bbmin_rel * full_grid_size).astype(np.int)
+    cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size).astype(np.int)
     print(" ", cell_vox_min, cell_vox_max)
     cell_vox_size = cell_vox_max - cell_vox_min
 
