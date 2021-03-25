@@ -9,7 +9,7 @@ from common import make_triples, load_normalized_point_cloud, scale_bounding_box
     generate_nystrom_samples, fit_model
 
 
-def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized, scale, out,
+def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_normalized, scale, out,
                         dtype=torch.float64):
     full_bbmin, full_bbsize = full_bbox
     cell_bbmin, cell_bbsize = cell_bbox
@@ -17,9 +17,9 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     # print("FULL BBOX", full_bbmin, full_bbsize)
     # print("CELL BBOX", cell_bbmin, cell_bbsize)
 
-    print("  full_bbsize, full_grid_width", full_bbsize, full_grid_width)
-    full_grid_size = np.round(full_bbsize / scale * full_grid_width).astype(np.int64)
-    print("  full_grid_size", full_grid_size)
+    # print("  full_bbsize, full_grid_width", full_bbsize, full_grid_width)
+    # full_grid_size = np.round(full_bbsize / scale * full_grid_width).astype(np.int64)
+    # print("  full_grid_size", full_grid_size)
 
     cell_bbmin_rel = (cell_bbmin - full_bbmin) / full_bbsize
     cell_bbmax_rel = (cell_bbmin + cell_bbsize - full_bbmin) / full_bbsize
@@ -141,7 +141,7 @@ def main():
     # We're going to include the overlap padding in the final reconstruction.
     # TODO: Do a better version of this where we just include the overlap in the boundary cells
     scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, 1.0 + args.overlap)
-    cell_bb_size = scaled_bbn_size / args.cells_per_axis
+
 
     count = 0
     full_grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
@@ -151,7 +151,10 @@ def main():
     for cell_i in range(args.cells_per_axis):
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
+                cell_bb_size = scaled_bbn_size / args.cells_per_axis
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
+
+                # Bounding box of padded cell
                 cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
                                                                                    1.0 + args.overlap)
                 cell_pad_bb_max = cell_bb_origin + cell_pad_bb_size
@@ -190,7 +193,7 @@ def main():
                 bb_recon_origin = bbox_scale * (cell_bb_origin + bbox_translate)
                 bbox_recon_size = bbox_scale * cell_bb_size
                 bbox_normalized_ijk = (bb_recon_origin, bbox_recon_size)
-                ygrid = reconstruct_on_grid(mdl_ijk, args.grid_size,
+                ygrid = reconstruct_on_grid(mdl_ijk, full_grid_size,
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
                                             cell_bbox_normalized=bbox_normalized_ijk,
