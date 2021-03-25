@@ -166,6 +166,8 @@ def main():
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
+                print(cell_bb_origin, cell_bb_size)
+                print(scaled_bbn_min, scaled_bbn_size)
                 cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
                                                                                    1.0 + args.overlap)
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
