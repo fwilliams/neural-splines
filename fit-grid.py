@@ -38,19 +38,19 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     full_bbmin, full_bbsize = full_bbox
     cell_bbmin, cell_bbsize = cell_bbox
 
-    print("FULL BBOX", full_bbmin, full_bbsize)
-    print("CELL BBOX", cell_bbmin, cell_bbsize)
+    # print("FULL BBOX", full_bbmin, full_bbsize)
+    # print("CELL BBOX", cell_bbmin, cell_bbsize)
 
     full_grid_size = np.round(full_bbsize * full_grid_width).astype(np.int64)
 
     cell_bbmin_rel = (cell_bbmin - full_bbmin) / cell_bbsize
     cell_bbmax_rel = (cell_bbmin + cell_bbsize - full_bbmin) / cell_bbsize
 
-    print("RELATIVE BBOX", cell_bbmin_rel, cell_bbmax_rel)
+    # print("RELATIVE BBOX", cell_bbmin_rel, cell_bbmax_rel)
 
     cell_vox_min = np.ceil(cell_bbmin_rel * full_grid_size)
     cell_vox_max = np.floor(cell_bbmax_rel * full_grid_size)
-    print(cell_vox_min, cell_vox_max)
+    print(" ", cell_vox_min, cell_vox_max)
     cell_vox_size = cell_vox_max - cell_vox_min
 
     plt_range_min, plt_range_max = cell_bbox_normalized[0], cell_bbox_normalized[0] + cell_bbox_normalized[1]
@@ -60,7 +60,7 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
                      axis=-1)
     xgrid = torch.from_numpy(xgrid).to(dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
-    print(full_grid_size, cell_vox_size)
+    # print(full_grid_size, cell_vox_size)
     ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int)))
     ygrid = ygrid.detach().cpu().numpy()
 
@@ -166,22 +166,21 @@ def main():
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
-                print("ijk CELL BBOX", cell_bb_origin, cell_bb_size)
-                print("ijk FULL BBOX", scaled_bbn_min, scaled_bbn_size)
+                # print("ijk CELL BBOX", cell_bb_origin, cell_bb_size)
+                # print("ijk FULL BBOX", scaled_bbn_min, scaled_bbn_size)
                 cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
                                                                                    1.0 + args.overlap)
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
-                print(mask_ijk)
+                # print(mask_ijk)
                 mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
-                print(mask_ijk)
-                print((mask_ijk > 0).sum())
+                # print(mask_ijk)
+                # print((mask_ijk > 0).sum())
                 x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
                 x_ijk, n_ijk, bbox_ijk, bbox_normalized_ijk = normalize_point_cloud(x_ijk.numpy(), n_ijk.numpy(), dtype=dtype)
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
                 x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
-                print(x_homogeneous_ijk.is_contiguous())
                 x_ny_ijk, center_selector_ijk, ny_count_ijk = generate_nystrom_samples(x_homogeneous_ijk,
                                                                                        args.num_nystrom_samples,
                                                                                        args.nystrom_mode,
