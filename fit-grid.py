@@ -53,7 +53,7 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
                      axis=-1)
     xgrid = torch.from_numpy(xgrid).to(dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
-    ygrid = model.predict(xgrid).reshape(cell_vox_size[0], cell_vox_size[1], cell_vox_size[2])
+    ygrid = model.predict(xgrid).reshape((cell_vox_size[0], cell_vox_size[1], cell_vox_size[2]))
     ygrid = ygrid.detach().cpu().numpy()
 
     return ygrid
