@@ -188,6 +188,7 @@ def main():
 
                 bb_recon_origin = bbox_scale * (cell_bb_origin + bbox_translate)
                 bbox_recon_size = bbox_scale * cell_bb_size
+                bbox_normalized_ijk = (bb_recon_origin, bbox_recon_size)
                 ygrid = reconstruct_on_grid(mdl_ijk, args.grid_size,
                                             full_bbox=(scaled_bbn_min, scaled_bbn_size),
                                             cell_bbox=(cell_bb_origin, cell_bb_size),
