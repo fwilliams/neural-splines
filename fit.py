@@ -1,15 +1,14 @@
 import argparse
+import time
 
 import falkon
 import numpy as np
 import point_cloud_utils as pcu
-import time
 import torch
 from skimage.measure import marching_cubes
 
+from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter, generate_nystrom_samples
 from common.falkon_kernels import LaplaceKernelSphere, NeuralSplineKernel, LinearAngleKernel
-from common.kmeans import kmeans
-from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter
 
 
 def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="spherical-laplace",
@@ -161,26 +160,10 @@ def main():
     x, y = make_triples(x, n, args.eps)
     x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
-    if args.nystrom_mode == 'random':
-        print("Using Nyström samples chosen uniformly at random from the input.")
-        center_selector = 'uniform'
-        x_ny = None
-        ny_count = args.num_nystrom_samples
-    elif args.nystrom_mode == 'blue-noise':
-        print("Generating blue noise Nyström samples.")
-        ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), args.num_nystrom_samples, random_seed=seed)
-        x_ny = x_homogeneous[ny_idx]
-        ny_count = x_ny.shape[0]
-        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
-    elif args.nystrom_mode == 'k-means':
-        print("Generating k-means Nyström samples.")
-        _, x_ny = kmeans(x, args.num_nystrom_samples)
-        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
-        ny_count = x_ny.shape[0]
-        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
-    else:
-        raise ValueError(f"Invalid value {args.nystrom_mode} for --nystrom-mode. "
-                         f"Must be one of 'random', 'blue-noise' or 'k-means'")
+    x_ny, center_selector, ny_count = generate_nystrom_samples(x_homogeneous,
+                                                               args.num_nystrom_samples,
+                                                               args.nystrom_mode,
+                                                               seed)
 
     print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nyström samples.")
     mdl = fit_model(x_homogeneous, y, args.regularization, ny_count, center_selector, maxiters=args.cg_max_iters,

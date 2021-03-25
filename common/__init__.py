@@ -1,8 +1,11 @@
 import distutils.util
 
+import falkon
 import numpy as np
 import point_cloud_utils as pcu
 import torch
+
+from .kmeans import kmeans
 
 
 def query_yes_no(question, default='no'):
@@ -100,3 +103,28 @@ def scale_bounding_box_diameter(bbox, scale):
     scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
     scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
     return scaled_bb_min, scaled_bb_size
+
+
+def generate_nystrom_samples(x, num_samples, sampling_method, seed):
+    if sampling_method == 'random':
+        print("Using Nyström samples chosen uniformly at random from the input.")
+        center_selector = 'uniform'
+        x_ny = None
+        ny_count = min(num_samples, x.shape[0])
+    elif sampling_method == 'blue-noise':
+        print("Generating blue noise Nyström samples.")
+        ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=seed)
+        x_ny = x[ny_idx]
+        ny_count = x_ny.shape[0]
+        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
+    elif sampling_method == 'k-means':
+        print("Generating k-means Nyström samples.")
+        _, x_ny = kmeans(x[:, :-1], num_samples)
+        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
+        ny_count = x_ny.shape[0]
+        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
+    else:
+        raise ValueError(f"Invalid value {sampling_method} for --nystrom-mode. "
+                         f"Must be one of 'random', 'blue-noise' or 'k-means'")
+
+    return x_ny, center_selector, ny_count
