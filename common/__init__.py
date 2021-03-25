@@ -1,10 +1,12 @@
 import distutils.util
+import time
 
 import falkon
 import numpy as np
 import point_cloud_utils as pcu
 import torch
 
+from .falkon_kernels import NeuralSplineKernel, LaplaceKernelSphere, LinearAngleKernel
 from .kmeans import kmeans
 
 
@@ -128,3 +130,39 @@ def generate_nystrom_samples(x, num_samples, sampling_method, seed):
                          f"Must be one of 'random', 'blue-noise' or 'k-means'")
 
     return x_ny, center_selector, ny_count
+
+
+def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="neural-spline",
+              maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False, falkon_opts=None):
+
+    if falkon_opts is None:
+        falkon_opts = falkon.FalkonOptions()
+
+        # Always use cuda for everything
+        falkon_opts.min_cuda_pc_size_64 = 1
+        falkon_opts.min_cuda_pc_size_32 = 1
+        falkon_opts.min_cuda_iter_size_64 = 1
+        falkon_opts.min_cuda_iter_size_32 = 1
+        falkon_opts.use_cpu = False
+
+        falkon_opts.cg_tolerance = stop_thresh
+        falkon_opts.debug = verbose
+
+    if kernel_type == "neural-spline":
+        print("Using Neural Spline Kernel")
+        kernel = NeuralSplineKernel(variance=variance, opt=falkon_opts)
+    elif kernel_type == "spherical-laplace":
+        print("Using Spherical Laplace Kernel")
+        kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=falkon_opts)
+    elif kernel_type == "linear-angle":
+        kernel = LinearAngleKernel(opt=falkon_opts)
+    else:
+        raise ValueError(f"Invalid kernel_type {kernel_type}, expected one of 'neural-spline' or 'spherical-laplace'")
+
+    fit_start_time = time.time()
+    model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=falkon_opts, maxiter=maxiters,
+                          center_selection=center_selector)
+
+    model.fit(x, y)
+    print(f"Fit model in {time.time() - fit_start_time} seconds")
+    return model
