@@ -194,3 +194,6 @@ def main():
                               n_ijk.astype(np.float32), c_ijk.astype(np.float32))
                 torch.save((mdl_ijk, x_ijk, y_ijk, x_ny_ijk), f"checkpoint_{cell_i}_{cell_j}_{cell_k}.pth")
 
+
+if __name__ == "__main__":
+    main()
