@@ -148,7 +148,7 @@ def main():
 
     count = 0
     full_grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
-    out_grid = np.ones(full_grid_size, dtype=np.float32)
+    out_grid = np.zeros(full_grid_size, dtype=np.float32)
     print("full grid size is", full_grid_size)
 
     for cell_i in range(args.cells_per_axis):
