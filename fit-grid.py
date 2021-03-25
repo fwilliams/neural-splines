@@ -60,7 +60,6 @@ def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_n
         cell_vox_min[1]:cell_vox_max[1],
         cell_vox_min[2]:cell_vox_max[2]][nnz_mask] /= 2.0
 
-
     return ygrid
 
 
