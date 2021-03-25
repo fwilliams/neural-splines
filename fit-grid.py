@@ -166,7 +166,7 @@ def main():
                 mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
                 print(mask_ijk)
                 print((mask_ijk > 0).sum())
-                x_ijk, n_ijk = x[mask_ijk], n[mask_ijk]
+                x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
                 x_ijk, n_ijk, bbox_ijk, bbox_normalized_ijk = normalize_point_cloud(x_ijk.numpy(), n_ijk.numpy(), dtype=dtype)
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
