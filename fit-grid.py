@@ -171,6 +171,7 @@ def main():
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
                 x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
+                print(x_homogeneous_ijk.is_contiguous())
                 x_ny_ijk, center_selector_ijk, ny_count_ijk = generate_nystrom_samples(x_homogeneous_ijk,
                                                                                        args.num_nystrom_samples,
                                                                                        args.nystrom_mode,
