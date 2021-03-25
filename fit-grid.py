@@ -38,8 +38,8 @@ def reconstruct_on_grid(model, full_grid_width, full_bbox, cell_bbox, cell_bbox_
     full_bbmin, full_bbsize = full_bbox
     cell_bbmin, cell_bbsize = cell_bbox
 
-    print(full_bbmin, full_bbsize)
-    print(cell_bbmin, cell_bbsize)
+    print("FULL BBOX", full_bbmin, full_bbsize)
+    print("CELL BBOX", cell_bbmin, cell_bbsize)
 
     full_grid_size = np.round(full_bbsize * full_grid_width).astype(np.int64)
 
@@ -166,8 +166,8 @@ def main():
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
-                print(cell_bb_origin, cell_bb_size)
-                print(scaled_bbn_min, scaled_bbn_size)
+                print("ijk CELL BBOX", cell_bb_origin, cell_bb_size)
+                print("ijk FULL BBOX", scaled_bbn_min, scaled_bbn_size)
                 cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
                                                                                    1.0 + args.overlap)
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
