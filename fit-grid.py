@@ -162,6 +162,7 @@ def main():
                                                                                    1.0 + args.overlap)
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
+                print(mask_ijk)
                 mask_ijk = np.max(mask_ijk, axis=-1)
 
                 x_ijk, n_ijk = x[mask_ijk], n[mask_ijk]
