@@ -153,14 +153,12 @@ def main():
         x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    fitted_models = []
+    # fitted_models = []
 
     # We're going to include the overlap padding in the final reconstruction.
     # TODO: Do a better version of this where we just include the overlap in the boundary cells
     scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, 1.0 + args.overlap)
 
-
-    count = 0
     full_grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
     out_grid = np.ones(full_grid_size, dtype=np.float32)
     print("full grid size is", full_grid_size)
@@ -201,8 +199,7 @@ def main():
                                     kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                                     variance=args.outer_layer_variance,
                                     verbose=args.verbose)
-                fitted_models.append(mdl_ijk.to('cpu'))
-                count += 1
+                # fitted_models.append(mdl_ijk.to('cpu'))
 
                 # model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized
                 # TODO: Saving is for debug only, still need to do full reconstruction
@@ -210,13 +207,13 @@ def main():
                 bb_recon_origin = bbox_scale * (cell_bb_origin + bbox_translate)
                 bbox_recon_size = bbox_scale * cell_bb_size
                 bbox_normalized_ijk = (bb_recon_origin, bbox_recon_size)
-                ygrid = reconstruct_on_grid(mdl_ijk, full_grid_size,
-                                            full_bbox=(scaled_bbn_min, scaled_bbn_size),
-                                            cell_bbox=(cell_bb_origin, cell_bb_size),
-                                            cell_bbox_normalized=bbox_normalized_ijk,
-                                            scale=1.0 + args.overlap,
-                                            out=out_grid,
-                                            dtype=dtype)
+                reconstruct_on_grid(mdl_ijk, full_grid_size,
+                                    full_bbox=(scaled_bbn_min, scaled_bbn_size),
+                                    cell_bbox=(cell_bb_origin, cell_bb_size),
+                                    cell_bbox_normalized=bbox_normalized_ijk,
+                                    scale=1.0 + args.overlap,
+                                    out=out_grid,
+                                    dtype=dtype)
                 # v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
                 # pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
                 #               v_ijk.astype(np.float32), f_ijk.astype(np.int32),
