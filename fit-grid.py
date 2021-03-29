@@ -128,6 +128,10 @@ def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
     print("XMIN, XMAX", xmin, xmax)
     print("XMAX - XMIN", xmax - xmin)
     print("CELL VOXEL SIZE", cell_voxel_size)
+    gg = np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
+                                                  xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
+                                                  xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]
+    print("GG?", gg.shape)
     xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
                                                   xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
                                                   xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]], axis=-1)
