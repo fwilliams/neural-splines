@@ -70,8 +70,8 @@ def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_n
 
 
 def points_in_bbox(x, bbox):
-    mask = np.logical_and(x > torch.from_numpy(bbox[0]),
-                          x <= torch.from_numpy(bbox[0] + bbox[1]))
+    mask = torch.logical_and(x > torch.from_numpy(bbox[0]),
+                             x <= torch.from_numpy(bbox[0] + bbox[1]))
     mask = torch.min(mask, axis=-1)[0].to(torch.bool)
     return mask
 
