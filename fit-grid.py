@@ -189,6 +189,7 @@ def main():
                 x_ijk = bbox_scale * (x_ijk + bbox_translate)
 
                 print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
+                raise ValueError("DERP")
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
                 x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
