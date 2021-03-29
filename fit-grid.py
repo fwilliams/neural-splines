@@ -124,7 +124,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
 
 
 def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
-    recon_bbox = (_.numpy() for _ in recon_bbox)
+    recon_bbox = [_.numpy() for _ in recon_bbox]
     cell_voxel_size = cell_voxel_size.numpy()
     xmin, xmax = recon_bbox[0], (recon_bbox[0] + recon_bbox[1])
     print(xmin[0], xmax[0], cell_voxel_size[0])
