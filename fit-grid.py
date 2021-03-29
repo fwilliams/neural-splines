@@ -232,6 +232,7 @@ def main():
     for cell_i in range(args.cells_per_axis):
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
+                print(bbox, scaled_bbox)
                 cell_bb_size = scaled_bbox[1] / args.cells_per_axis
                 cell_bb_origin = scaled_bbox[0] + torch.tensor([cell_i, cell_j, cell_k]) * cell_bb_size
                 cell_bbox = cell_bb_origin, cell_bb_size

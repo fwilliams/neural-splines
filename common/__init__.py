@@ -121,10 +121,10 @@ def normalize_point_cloud(v, n, min_norm_normal=1e-5, dtype=torch.float64):
 
 def scale_bounding_box_diameter(bbox, scale):
     bb_min, bb_size = bbox
-    bb_diameter = np.linalg.norm(bb_size)
+    bb_diameter = torch.norm(bb_size)
     bb_unit_dir = bb_size / bb_diameter
     scaled_bb_size = bb_size * scale
-    scaled_bb_diameter = np.linalg.norm(scaled_bb_size)
+    scaled_bb_diameter = torch.norm(scaled_bb_size)
     scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
     return scaled_bb_min, scaled_bb_size
 
