@@ -98,7 +98,7 @@ def affine_transform_point_cloud(x, tx):
 
 def affine_transform_bounding_box(bbox, tx):
     translate, scale = tx
-    return scale * (bbox[0] + tx), scale * bbox[1]
+    return scale * (bbox[0] + translate), scale * bbox[1]
 
 
 def fit_cell(x, n, cell_bbox, seed, args):
