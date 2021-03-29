@@ -224,8 +224,8 @@ def main():
     scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
     print(bbox, scaled_bbox)
     full_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
-    out_grid = torch.ones(full_grid_size, dtype=torch.float32)
-    out_mask = torch.zeros(full_grid_size, dtype=torch.bool)
+    out_grid = torch.ones(*full_grid_size, dtype=torch.float32)
+    out_mask = torch.zeros(*full_grid_size, dtype=torch.bool)
 
     print("full grid size is", full_grid_size)
 
