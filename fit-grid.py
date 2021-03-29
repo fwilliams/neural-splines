@@ -108,7 +108,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
     x, y = make_triples(x, n, args.eps, homogeneous=True)
 
     tx = normalizing_transform(x)
-    x = normalizing_transform(x, tx)
+    x = affine_transform_point_cloud(x, tx)
 
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
 
