@@ -189,6 +189,7 @@ def main():
                     continue
 
                 x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
+                print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
                 bbox_scale = 1.0 / np.max(cell_pad_bb_size)
                 bbox_translate = - (cell_pad_bb_origin + 0.5 * cell_pad_bb_size)
                 x_ijk = bbox_scale * (x_ijk + bbox_translate)
