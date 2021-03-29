@@ -253,7 +253,8 @@ def main():
                 # Quantized bounding box size for a cell
                 cell_bbox = cell_vox_min * voxel_size, cell_vox_size * voxel_size
 
-                print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
+                if cell_i == 0 and cell_j == 0:
+                    print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
@@ -263,12 +264,12 @@ def main():
                 model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
-                         cell_vox_min[1]:cell_vox_max[1],
-                         cell_vox_min[2]:cell_vox_max[2]] = \
+                cell_vox_min[1]:cell_vox_max[1],
+                cell_vox_min[2]:cell_vox_max[2]] = \
                     eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
                 out_mask[cell_vox_min[0]:cell_vox_max[0],
-                         cell_vox_min[1]:cell_vox_max[1],
-                         cell_vox_min[2]:cell_vox_max[2]] = True
+                cell_vox_min[1]:cell_vox_max[1],
+                cell_vox_min[2]:cell_vox_max[2]] = True
 
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
