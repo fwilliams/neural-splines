@@ -251,7 +251,7 @@ def main():
                 cell_vox_size = cell_vox_max - cell_vox_min
 
                 # Quantized bounding box size for a cell
-                cell_bbox = cell_vox_min * voxel_size, cell_vox_size * voxel_size
+                cell_bbox = cell_vox_min * voxel_size - scaled_bbox[0], cell_vox_size * voxel_size
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
