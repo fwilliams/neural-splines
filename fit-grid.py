@@ -153,6 +153,9 @@ def main():
         x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
+    print("bbox_normalized", bbox_normalized)
+    print("x.min(), x.max()", x.min(0)[0], x.max(0)[0])
+
     # fitted_models = []
 
     # We're going to include the overlap padding in the final reconstruction.
@@ -184,6 +187,8 @@ def main():
                 bbox_scale = 1.0 / np.max(cell_pad_bb_size)
                 bbox_translate = - 0.5 * (cell_pad_bb_max + cell_pad_bb_origin)
                 x_ijk = bbox_scale * (x_ijk + bbox_translate)
+
+                print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
                 x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
