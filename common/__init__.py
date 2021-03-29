@@ -85,7 +85,7 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     n = n[mask].astype(np.float64)
     n /= np.linalg.norm(n, axis=-1, keepdims=True)
 
-    bbox_origin, bbox_size = x.min(0), (x.max(0) - x.min(0))
+    bbox = x.min(0), (x.max(0) - x.min(0))
 
     return torch.from_numpy(x), torch.from_numpy(n), bbox
 
