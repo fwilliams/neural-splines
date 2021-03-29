@@ -262,13 +262,13 @@ def main():
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = \
-                    eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).astype(out_grid.dtype)
+                    eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
                 out_mask[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = True
 
     torch.save(out_grid, "out.grid.pth")
-    v, f, n, c = marching_cubes(out_grid, level=0.0, mask=out_mask)
+    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
     pcu.write_ply(f"recon.ply",
                   v.astype(np.float32), f.astype(np.int32),
                   n.astype(np.float32), c.astype(np.float32))
