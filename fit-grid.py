@@ -97,6 +97,7 @@ def affine_transform_point_cloud(x, tx):
 
 def affine_transform_bounding_box(bbox, tx):
     translate, scale = tx
+    print(translate, scale, bbox[0], bbox[1])
     return scale * (bbox[0] + translate), scale * bbox[1]
 
 
@@ -231,7 +232,6 @@ def main():
     for cell_i in range(args.cells_per_axis):
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
-                print(bbox, scaled_bbox)
                 cell_bb_size = scaled_bbox[1] / args.cells_per_axis
                 cell_bb_origin = scaled_bbox[0] + torch.tensor([cell_i, cell_j, cell_k]) * cell_bb_size
                 cell_bbox = cell_bb_origin, cell_bb_size
@@ -251,6 +251,7 @@ def main():
                                           full_grid_size)
                 cell_vox_size = cell_vox_max - cell_vox_min
                 print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
+                # print(bbox, scaled_bbox)
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = \
