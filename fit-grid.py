@@ -222,7 +222,7 @@ def main():
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
     scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
-
+    print(bbox, scaled_bbox)
     full_grid_size = np.round(scaled_bbox[1] / np.max(scaled_bbox[1]) * args.grid_size).astype(np.int64)
     out_grid = np.ones(full_grid_size, dtype=np.float32)
     out_mask = np.zeros(full_grid_size, dtype=np.bool)
