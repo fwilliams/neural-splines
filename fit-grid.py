@@ -184,12 +184,14 @@ def main():
 
                 mask_unpadded = np.logical_and(x > torch.from_numpy(cell_bb_origin),
                                                x <= torch.from_numpy(cell_bb_origin + cell_bb_size))
+                print("mask_unpadded.sum()", mask_unpadded.sum())
                 if mask_unpadded.sum() <= 0:
                     continue
 
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
                 mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
+                print("mask_ijk.sum()", mask_ijk.sum())
 
                 x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
                 print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
