@@ -81,7 +81,7 @@ def normalizing_transform(x):
     bbox_size = max_x - min_x
 
     translate = -(min_x + 0.5 * bbox_size)
-    scale = 1.0 / np.max(bbox_size)
+    scale = 1.0 / torch.max(bbox_size)
 
     return translate, scale
 
@@ -250,7 +250,7 @@ def main():
                 cell_vox_max = np.minimum(np.round(cell_bbmax_rel * full_grid_size).astype(np.int32) + 1,
                                           full_grid_size)
                 cell_vox_size = cell_vox_max - cell_vox_min
-
+                print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = \
