@@ -123,10 +123,11 @@ def fit_cell(x, n, cell_bbox, seed, args):
     return model, recon_bbox
 
 
-def eval_cell(model, cell_voxel_size, cell_bbox, recon_bbox, dtype):
+def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
     xmin, xmax = recon_bbox[0], recon_bbox[0] + recon_bbox[1]
     print("XMIN, XMAX", xmin, xmax)
     print("XMAX - XMIN", xmax - xmin)
+    print("CELL VOXEL SIZE", cell_voxel_size)
     xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
                                                   xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
                                                   xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]], axis=-1)
@@ -259,7 +260,7 @@ def main():
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = \
-                    eval_cell(model_ijk, cell_vox_size, cell_bbox, recon_bbox, dtype).astype(out_grid.dtype)
+                    eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).astype(out_grid.dtype)
                 out_mask[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = True
