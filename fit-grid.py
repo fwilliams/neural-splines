@@ -105,12 +105,13 @@ def fit_cell(x, n, cell_bbox, seed, args):
     padded_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
     mask = points_in_bbox(x, padded_bbox)
     x, n = x[mask], n[mask]
-    x, y = make_triples(x, n, args.eps, homogeneous=True)
+    x, y = make_triples(x, n, args.eps, homogeneous=False)
 
-    tx = normalizing_transform(x[:, :-1])
-    x[:, :-1] = affine_transform_point_cloud(x[:, :-1], tx)
-
+    tx = normalizing_transform(x)
+    x = affine_transform_point_cloud(x, tx)
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
+
+    x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)])
 
     model = fit_model(x, y, args.regularization, ny_count, center_selector,
                       maxiters=args.cg_max_iters,
