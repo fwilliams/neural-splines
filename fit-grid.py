@@ -177,16 +177,19 @@ def main():
                 cell_bb_size = scaled_bbn_size / args.cells_per_axis
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
 
-                # Bounding box of padded cell
-                cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
-                                                                                   1.0 + args.overlap)
-                cell_pad_bb_max = cell_bb_origin + cell_pad_bb_size
-
+                # If there are no points in this region, then skip it
                 mask_unpadded = np.logical_and(x > torch.from_numpy(cell_bb_origin),
                                                x <= torch.from_numpy(cell_bb_origin + cell_bb_size))
                 print("mask_unpadded.sum()", mask_unpadded.sum())
                 if mask_unpadded.sum() <= 0:
                     continue
+
+                print("bb_origin, bb_size", cell_bb_origin, cell_bb_size)
+
+                # Bounding box of padded cell
+                cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
+                                                                                   1.0 + args.overlap)
+                print("pad_bb_origin, pad_bb_size", cell_pad_bb_origin, cell_pad_bb_size)
 
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
