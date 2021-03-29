@@ -177,8 +177,6 @@ def main():
                 cell_bb_size = scaled_bbn_size / args.cells_per_axis
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
 
-                print("x.min(), x.max()", x.min(0)[0], x.max(0)[0])
-
                 # If there are no points in this region, then skip it
                 mask_unpadded = np.logical_and(x > torch.from_numpy(cell_bb_origin),
                                                x <= torch.from_numpy(cell_bb_origin + cell_bb_size))
@@ -198,7 +196,7 @@ def main():
                 bbox_translate = - (cell_pad_bb_origin + 0.5 * cell_pad_bb_size)
                 x_ijk = bbox_scale * (x_ijk + bbox_translate)
 
-                print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
+                # print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
 
                 x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
                 x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
