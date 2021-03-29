@@ -123,9 +123,10 @@ def fit_cell(x, n, cell_bbox, seed, args):
 
 
 def eval_cell(model, cell_voxel_size, cell_bbox, recon_bbox, dtype):
-    xgrid = np.stack([_.ravel() for _ in np.mgrid[recon_bbox[0]:recon_bbox[0]:cell_voxel_size[0] * 1j,
-                                                  recon_bbox[1]:recon_bbox[1]:cell_voxel_size[1] * 1j,
-                                                  recon_bbox[2]:recon_bbox[2]:cell_voxel_size[2] * 1j]], axis=-1)
+    xmin, xmax = recon_bbox[0], recon_bbox[0] + recon_bbox[1]
+    xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
+                                                  xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
+                                                  xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]], axis=-1)
     xgrid = torch.from_numpy(xgrid).to(dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
