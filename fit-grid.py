@@ -111,7 +111,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
     x = affine_transform_point_cloud(x, tx)
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
 
-    x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)])
+    x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
     model = fit_model(x, y, args.regularization, ny_count, center_selector,
                       maxiters=args.cg_max_iters,
