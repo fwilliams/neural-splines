@@ -177,6 +177,9 @@ def main():
                 cell_bb_size = scaled_bbn_size / args.cells_per_axis
                 cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
 
+                # Bounding box of padded cell
+                cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
+                                                                                   1.0 + args.overlap)
                 mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
                                           x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
                 mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
