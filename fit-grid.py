@@ -93,7 +93,7 @@ def inverse_affine_transform(tx):
 
 def affine_transform_point_cloud(x, tx):
     translate, scale = tx
-    return scale * (x + tx)
+    return scale * (x + translate)
 
 
 def affine_transform_bounding_box(bbox, tx):
