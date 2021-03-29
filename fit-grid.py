@@ -253,13 +253,13 @@ def main():
                 # Quantized bounding box size for a cell
                 cell_bbox = cell_vox_min * voxel_size, cell_vox_size * voxel_size
 
-                if cell_i == 0 and cell_j == 0:
-                    print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
-
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
                 if mask_cell.sum() <= 0:
                     continue
+
+                if cell_i == 0 and cell_j == 0:
+                    print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
 
                 model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
