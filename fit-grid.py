@@ -136,7 +136,7 @@ def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
     xgrid = torch.from_numpy(xgrid).to(dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
-    ygrid = model.predict(xgrid).reshape(tuple(cell_voxel_size.astype(np.int))).detach().cpu().numpy()
+    ygrid = model.predict(xgrid).reshape(tuple(cell_voxel_size.astype(np.int))).detach().cpu()
 
     return ygrid
 
