@@ -5,7 +5,7 @@ import point_cloud_utils as pcu
 import torch
 from skimage.measure import marching_cubes
 
-from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter, \
+from common import make_triples, load_point_cloud, scale_bounding_box_diameter, \
     generate_nystrom_samples, fit_model
 
 
@@ -65,6 +65,71 @@ def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_n
     # out[cell_vox_min[0]:cell_vox_max[0],
     #     cell_vox_min[1]:cell_vox_max[1],
     #     cell_vox_min[2]:cell_vox_max[2]][nnz_mask] /= 2.0
+
+    return ygrid
+
+
+def points_in_bbox(x, bbox):
+    mask = np.logical_and(x > torch.from_numpy(bbox[0]),
+                          x <= torch.from_numpy(bbox[0] + bbox[1]))
+    mask = torch.min(mask, axis=-1)[0].to(torch.bool)
+    return mask
+
+
+def normalizing_transform(x):
+    min_x, max_x = x.min(0)[0], x.max(0)[0]
+    bbox_size = max_x - min_x
+
+    translate = -(min_x + 0.5 * bbox_size)
+    scale = 1.0 / np.max(bbox_size)
+
+    return translate, scale
+
+
+def inverse_affine_transform(tx):
+    translate, scale = tx
+    return -translate, 1.0 / scale
+
+
+def affine_transform_point_cloud(x, tx):
+    translate, scale = tx
+    return scale * (x + tx)
+
+
+def affine_transform_bounding_box(bbox, tx):
+    translate, scale = tx
+    return scale * (bbox[0] + tx), scale * bbox[1]
+
+
+def fit_cell(x, n, cell_bbox, seed, args):
+    padded_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
+    mask = points_in_bbox(x, padded_bbox)
+    x, n = x[mask], n[mask]
+    x, y = make_triples(x, n, args.eps, homogeneous=True)
+
+    tx = normalizing_transform(x)
+    x = normalizing_transform(x, tx)
+
+    x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
+
+    model = fit_model(x, y, args.regularization, ny_count, center_selector,
+                      maxiters=args.cg_max_iters,
+                      kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
+                      variance=args.outer_layer_variance,
+                      verbose=args.verbose)
+    recon_bbox = affine_transform_bounding_box(cell_bbox, inverse_affine_transform(tx))
+
+    return model, recon_bbox
+
+
+def eval_cell(model, cell_voxel_size, cell_bbox, recon_bbox, dtype):
+    xgrid = np.stack([_.ravel() for _ in np.mgrid[recon_bbox[0]:recon_bbox[0]:cell_voxel_size[0] * 1j,
+                                                  recon_bbox[1]:recon_bbox[1]:cell_voxel_size[1] * 1j,
+                                                  recon_bbox[2]:recon_bbox[2]:cell_voxel_size[2] * 1j]], axis=-1)
+    xgrid = torch.from_numpy(xgrid).to(dtype)
+    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
+
+    ygrid = model.predict(xgrid).reshape(tuple(cell_voxel_size.astype(np.int))).detach().cpu().numpy()
 
     return ygrid
 
@@ -151,21 +216,14 @@ def main():
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud, dtype=dtype)
+    x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
     if x.shape[0] > args.voxel_downsample_threshold:
         x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    print("bbox_normalized", bbox_normalized)
-    print("x.min(), x.max()", x.min(0)[0], x.max(0)[0])
+    scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
 
-    # fitted_models = []
-
-    # We're going to include the overlap padding in the final reconstruction.
-    # TODO: Do a better version of this where we just include the overlap in the boundary cells
-    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, 1.0 + args.overlap)
-
-    full_grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
+    full_grid_size = np.round(scaled_bbox[1] / np.max(scaled_bbox[1]) * args.grid_size).astype(np.int64)
     out_grid = np.ones(full_grid_size, dtype=np.float32)
     out_mask = np.zeros(full_grid_size, dtype=np.bool)
 
@@ -174,64 +232,33 @@ def main():
     for cell_i in range(args.cells_per_axis):
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
-                cell_bb_size = scaled_bbn_size / args.cells_per_axis
-                cell_bb_origin = scaled_bbn_min + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
+                cell_bb_size = scaled_bbox[1] / args.cells_per_axis
+                cell_bb_origin = scaled_bbox[0] + np.array([cell_i, cell_j, cell_k]) * cell_bb_size
+                cell_bbox = cell_bb_origin, cell_bb_size
 
                 # If there are no points in this region, then skip it
-                mask_unpadded = np.logical_and(x > torch.from_numpy(cell_bb_origin),
-                                               x <= torch.from_numpy(cell_bb_origin + cell_bb_size))
-                mask_unpadded = torch.min(mask_unpadded, axis=-1)[0].to(torch.bool)
-                if mask_unpadded.sum() <= 0:
+                mask_cell = points_in_bbox(x, cell_bbox)
+                if mask_cell.sum() <= 0:
                     continue
 
-                # Bounding box of padded cell
-                cell_pad_bb_origin, cell_pad_bb_size = scale_bounding_box_diameter((cell_bb_origin, cell_bb_size),
-                                                                                   1.0 + args.overlap)
-                mask_ijk = np.logical_and(x > torch.from_numpy(cell_pad_bb_origin),
-                                          x <= torch.from_numpy(cell_pad_bb_origin + cell_pad_bb_size))
-                mask_ijk = torch.min(mask_ijk, axis=-1)[0].to(torch.bool)
+                model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
-                x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
-                bbox_scale = 1.0 / np.max(cell_pad_bb_size)
-                bbox_translate = - (cell_pad_bb_origin + 0.5 * cell_pad_bb_size)
-                x_ijk = bbox_scale * (x_ijk + bbox_translate)
+                cell_bbmin_rel = (cell_bbox[0] - scaled_bbox[0]) / scaled_bbox[1]
+                cell_bbmax_rel = (cell_bbox[0] + cell_bbox[1] - scaled_bbox[0]) / scaled_bbox[1]
 
-                # print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
+                cell_vox_min = np.round(cell_bbmin_rel * full_grid_size).astype(np.int32)
+                cell_vox_max = np.minimum(np.round(cell_bbmax_rel * full_grid_size).astype(np.int32) + 1,
+                                          full_grid_size)
+                cell_vox_size = cell_vox_max - cell_vox_min
 
-                x_ijk, y_ijk = make_triples(x_ijk, n_ijk, args.eps)
-                x_homogeneous_ijk = torch.cat([x_ijk, torch.ones(x_ijk.shape[0], 1).to(x_ijk)], dim=-1)
-                x_ny_ijk, center_selector_ijk, ny_count_ijk = generate_nystrom_samples(x_homogeneous_ijk,
-                                                                                       args.num_nystrom_samples,
-                                                                                       args.nystrom_mode,
-                                                                                       seed)
+                out_grid[cell_vox_min[0]:cell_vox_max[0],
+                         cell_vox_min[1]:cell_vox_max[1],
+                         cell_vox_min[2]:cell_vox_max[2]] = \
+                    eval_cell(model_ijk, cell_vox_size, cell_bbox, recon_bbox, dtype).astype(out_grid.dtype)
+                out_mask[cell_vox_min[0]:cell_vox_max[0],
+                         cell_vox_min[1]:cell_vox_max[1],
+                         cell_vox_min[2]:cell_vox_max[2]] = True
 
-                print(f"Fitting model ({cell_i}, {cell_j}, {cell_k}) with {x_homogeneous_ijk.shape[0]} points "
-                      f"using {ny_count_ijk} Nyström samples.")
-                mdl_ijk = fit_model(x_homogeneous_ijk, y_ijk, args.regularization, ny_count_ijk, center_selector_ijk,
-                                    maxiters=args.cg_max_iters,
-                                    kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
-                                    variance=args.outer_layer_variance,
-                                    verbose=args.verbose)
-                # fitted_models.append(mdl_ijk.to('cpu'))
-
-                # model, full_grid_width, full_bbox, cell_bbox, cell_bbox_normalized
-                # TODO: Saving is for debug only, still need to do full reconstruction
-
-                bb_recon_origin = bbox_scale * (cell_bb_origin + bbox_translate)
-                bbox_recon_size = bbox_scale * cell_bb_size
-                bbox_normalized_ijk = (bb_recon_origin, bbox_recon_size)
-                reconstruct_on_grid(mdl_ijk, full_grid_size,
-                                    full_bbox=(scaled_bbn_min, scaled_bbn_size),
-                                    cell_bbox=(cell_bb_origin, cell_bb_size),
-                                    cell_bbox_normalized=bbox_normalized_ijk,
-                                    scale=1.0 + args.overlap,
-                                    out=out_grid, out_mask=out_mask,
-                                    dtype=dtype)
-                # v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
-                # pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
-                #               v_ijk.astype(np.float32), f_ijk.astype(np.int32),
-                #               n_ijk.astype(np.float32), c_ijk.astype(np.float32))
-                # torch.save((mdl_ijk, x_ijk, y_ijk, x_ny_ijk), f"checkpoint_{cell_i}_{cell_j}_{cell_k}.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid, level=0.0, mask=out_mask)
     pcu.write_ply(f"recon.ply",

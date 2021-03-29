@@ -37,7 +37,7 @@ def query_yes_no(question, default='no'):
             print("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
 
 
-def make_triples(x, n, eps):
+def make_triples(x, n, eps, homogeneous=False):
     """
     Convert a point cloud equipped with normals into a point cloud with points pertubed along those normals
     and corresponding occupancy values.
@@ -46,6 +46,7 @@ def make_triples(x, n, eps):
     :param x: The input points of shape [N, 3]
     :param n: The input normals of shape [N, 3]
     :param eps: The amount to perturb points about each normal
+    :param homogeneous: If true, return the points in homogeneous coordinates
     :return: A pair, (X, O) consisting of the new point cloud X and point occupancies O
     """
     x_in = x - n * eps
@@ -55,17 +56,38 @@ def make_triples(x, n, eps):
         occ_triples = torch.cat([torch.zeros(x.shape[0]),
                                  -torch.ones(x.shape[0]),
                                  torch.ones(x.shape[0])]).to(x) * eps
+        if homogeneous:
+            x_triples = torch.cat([x_triples, torch.ones(x_triples.shape[0], 1, dtype=x_triples.dtype)], dim=-1)
     else:
         x_triples = np.concatenate([x, x_in, x_out], axis=0)
         occ_triples = np.concatenate([torch.zeros(x.shape[0]),
                                      -torch.ones(x.shape[0]),
                                      torch.ones(x.shape[0])]).astype(x.dtype) * eps
+        if homogeneous:
+            x_triples = np.concatenate([x_triples, np.ones(x_triples.shape[0], 1, dtype=x_triples.dtype)], axis=-1)
     return x_triples, occ_triples
 
 
 def load_normalized_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
     return normalize_point_cloud(v, n, min_norm_normal, dtype)
+
+
+def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
+    v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
+
+    # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
+    # We use this mask to remove bad vertices
+    mask = np.linalg.norm(n, axis=-1) > min_norm_normal
+
+    # Keep the good points and normals
+    x = v[mask].astype(np.float64)
+    n = n[mask].astype(np.float64)
+    n /= np.linalg.norm(n, axis=-1, keepdims=True)
+
+    bbox_origin, bbox_size = x.min(0), (x.max(0) - x.min(0))
+
+    return torch.from_numpy(x), torch.from_numpy(n), bbox
 
 
 def normalize_point_cloud(v, n, min_norm_normal=1e-5, dtype=torch.float64):
