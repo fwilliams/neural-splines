@@ -247,7 +247,7 @@ def main():
                 cell_bbmax_rel = (cell_bbox[0] + cell_bbox[1] - scaled_bbox[0]) / scaled_bbox[1]
 
                 cell_vox_min = torch.round(cell_bbmin_rel * full_grid_size).to(torch.int32)
-                cell_vox_max = torch.minimum(np.round(cell_bbmax_rel * full_grid_size).astype(torch.int32) + 1,
+                cell_vox_max = torch.minimum(np.round(cell_bbmax_rel * full_grid_size).to(torch.int32) + 1,
                                              full_grid_size)
                 cell_vox_size = cell_vox_max - cell_vox_min
                 print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
