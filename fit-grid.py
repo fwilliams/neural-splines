@@ -9,7 +9,7 @@ from common import make_triples, load_normalized_point_cloud, scale_bounding_box
     generate_nystrom_samples, fit_model
 
 
-def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_normalized, scale, out,
+def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_normalized, scale, out, out_mask,
                         dtype=torch.float64):
     full_bbmin, full_bbsize = full_bbox
     cell_bbmin, cell_bbsize = cell_bbox
@@ -42,10 +42,6 @@ def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_n
     ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int)))
     ygrid = ygrid.detach().cpu().numpy()
 
-    nnz_mask = out[cell_vox_min[0]:cell_vox_max[0],
-               cell_vox_min[1]:cell_vox_max[1],
-               cell_vox_min[2]:cell_vox_max[2]] > 0.0
-
     print(cell_vox_max - cell_vox_min)
     print(out[cell_vox_min[0]:cell_vox_max[0],
           cell_vox_min[1]:cell_vox_max[1],
@@ -53,6 +49,13 @@ def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_n
     out[cell_vox_min[0]:cell_vox_max[0],
         cell_vox_min[1]:cell_vox_max[1],
         cell_vox_min[2]:cell_vox_max[2]] = ygrid.astype(out.dtype)
+    out_mask[cell_vox_min[0]:cell_vox_max[0],
+             cell_vox_min[1]:cell_vox_max[1],
+             cell_vox_min[2]:cell_vox_max[2]] = True
+
+    # nnz_mask = out[cell_vox_min[0]:cell_vox_max[0],
+    #            cell_vox_min[1]:cell_vox_max[1],
+    #            cell_vox_min[2]:cell_vox_max[2]] > 0.0
     # out[cell_vox_min[0]:cell_vox_max[0],
     #     cell_vox_min[1]:cell_vox_max[1],
     #     cell_vox_min[2]:cell_vox_max[2]][~nnz_mask] = ygrid[~nnz_mask].astype(out.dtype)
@@ -164,6 +167,8 @@ def main():
 
     full_grid_size = np.round(bbox_normalized[1] * args.grid_size).astype(np.int64)
     out_grid = np.ones(full_grid_size, dtype=np.float32)
+    out_mask = np.zeros(full_grid_size, dtype=np.bool)
+
     print("full grid size is", full_grid_size)
 
     for cell_i in range(args.cells_per_axis):
@@ -185,7 +190,7 @@ def main():
 
                 x_ijk, n_ijk = x[mask_ijk].contiguous(), n[mask_ijk].contiguous()
                 bbox_scale = 1.0 / np.max(cell_pad_bb_size)
-                bbox_translate = - 0.5 * (cell_pad_bb_max + cell_pad_bb_origin)
+                bbox_translate = - (cell_pad_bb_origin + 0.5 * cell_pad_bb_size)
                 x_ijk = bbox_scale * (x_ijk + bbox_translate)
 
                 print("x_ijk.min(), x_ijk.max()", x_ijk.min(0)[0], x_ijk.max(0)[0])
@@ -218,7 +223,7 @@ def main():
                                     cell_bbox=(cell_bb_origin, cell_bb_size),
                                     cell_bbox_normalized=bbox_normalized_ijk,
                                     scale=1.0 + args.overlap,
-                                    out=out_grid,
+                                    out=out_grid, out_mask=out_mask,
                                     dtype=dtype)
                 # v_ijk, f_ijk, n_ijk, c_ijk = marching_cubes(ygrid, level=0.0)
                 # pcu.write_ply(f"recon_{cell_i}_{cell_j}_{cell_k}.ply",
@@ -226,7 +231,7 @@ def main():
                 #               n_ijk.astype(np.float32), c_ijk.astype(np.float32))
                 # torch.save((mdl_ijk, x_ijk, y_ijk, x_ny_ijk), f"checkpoint_{cell_i}_{cell_j}_{cell_k}.pth")
     torch.save(out_grid, "out.grid.pth")
-    v, f, n, c = marching_cubes(out_grid, level=0.0)
+    v, f, n, c = marching_cubes(out_grid, level=0.0, mask=out_mask)
     pcu.write_ply(f"recon.ply",
                   v.astype(np.float32), f.astype(np.int32),
                   n.astype(np.float32), c.astype(np.float32))
