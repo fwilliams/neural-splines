@@ -125,7 +125,8 @@ def fit_cell(x, n, cell_bbox, seed, args):
 
 def eval_cell(model, cell_voxel_size, cell_bbox, recon_bbox, dtype):
     xmin, xmax = recon_bbox[0], recon_bbox[0] + recon_bbox[1]
-    print(xmin, xmax)
+    print("XMIN, XMAX", xmin, xmax)
+    print("XMAX - XMIN", xmax - xmin)
     xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
                                                   xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
                                                   xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]], axis=-1)
