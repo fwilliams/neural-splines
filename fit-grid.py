@@ -97,7 +97,6 @@ def affine_transform_point_cloud(x, tx):
 
 def affine_transform_bounding_box(bbox, tx):
     translate, scale = tx
-    print(translate, scale, bbox[0], bbox[1])
     return scale * (bbox[0] + translate), scale * bbox[1]
 
 
@@ -127,9 +126,7 @@ def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
     recon_bbox = [_.numpy() for _ in recon_bbox]
     cell_voxel_size = cell_voxel_size.numpy()
     xmin, xmax = recon_bbox[0], (recon_bbox[0] + recon_bbox[1])
-    print(xmin[0], xmax[0], cell_voxel_size[0])
-    gg = np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j]
-    print("GG?", gg.shape)
+
     xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
                                                   xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
                                                   xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]], axis=-1)
@@ -230,18 +227,33 @@ def main():
 
     scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
     print(bbox, scaled_bbox)
-    full_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
-    out_grid = torch.ones(*full_grid_size, dtype=torch.float32)
-    out_mask = torch.zeros(*full_grid_size, dtype=torch.bool)
+    out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
+    voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
+    out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
+    out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
 
-    print("full grid size is", full_grid_size)
+    print("full grid size is", out_grid_size)
 
     for cell_i in range(args.cells_per_axis):
         for cell_j in range(args.cells_per_axis):
             for cell_k in range(args.cells_per_axis):
                 cell_bb_size = scaled_bbox[1] / args.cells_per_axis
                 cell_bb_origin = scaled_bbox[0] + torch.tensor([cell_i, cell_j, cell_k]) * cell_bb_size
-                cell_bbox = cell_bb_origin, cell_bb_size
+
+                # Normalized cell bounding box in [0, 1]^3
+                cell_bbmin_rel = (cell_bb_origin - scaled_bbox[0]) / scaled_bbox[1]
+                cell_bbmax_rel = (cell_bb_origin + cell_bb_size - scaled_bbox[0]) / scaled_bbox[1]
+
+                # Min and max indices to write into voxel grid
+                cell_vox_min = torch.round(cell_bbmin_rel * out_grid_size).to(torch.int32)
+                cell_vox_max = torch.minimum(np.round(cell_bbmax_rel * out_grid_size).to(torch.int32) + 1,
+                                             out_grid_size)
+                cell_vox_size = cell_vox_max - cell_vox_min
+
+                # Quantized bounding box size for a cell
+                cell_bbox = cell_vox_min * voxel_size, cell_vox_size * voxel_size
+
+                print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
@@ -250,15 +262,6 @@ def main():
 
                 model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
-                cell_bbmin_rel = (cell_bbox[0] - scaled_bbox[0]) / scaled_bbox[1]
-                cell_bbmax_rel = (cell_bbox[0] + cell_bbox[1] - scaled_bbox[0]) / scaled_bbox[1]
-
-                cell_vox_min = torch.round(cell_bbmin_rel * full_grid_size).to(torch.int32)
-                cell_vox_max = torch.minimum(np.round(cell_bbmax_rel * full_grid_size).to(torch.int32) + 1,
-                                             full_grid_size)
-                cell_vox_size = cell_vox_max - cell_vox_min
-                print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
-                # print(bbox, scaled_bbox)
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
                          cell_vox_min[1]:cell_vox_max[1],
                          cell_vox_min[2]:cell_vox_max[2]] = \
