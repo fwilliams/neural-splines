@@ -237,7 +237,7 @@ def main():
     for c_i in range(args.cells_per_axis):
         for c_j in range(args.cells_per_axis):
             for c_k in range(args.cells_per_axis):
-                cell_idx = torch.tensor([(c_i, c_j, c_k)]).to(torch.int32)
+                cell_idx = torch.tensor((c_i, c_j, c_k)).to(torch.int32)
 
                 # Size of the cell in voxels (pad the last cell with an extra voxel)
                 cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
