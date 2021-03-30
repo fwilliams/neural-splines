@@ -251,15 +251,18 @@ def main():
         cell_bboxes.append([])
         cell_vox_grids.append([])
         current_vox_max[0] = torch.round(cell_size_float[0] + current_vox_max[0]).to(current_vox_max)
+
         for c_j in range(args.cells_per_axis):
             cell_bboxes[c_i].append([])
             cell_vox_grids[c_i].append([])
             current_vox_max[1] = torch.round(cell_size_float[1] + current_vox_max[1]).to(current_vox_max)
+
             for c_k in range(args.cells_per_axis):
                 current_vox_max[2] = torch.round(cell_size_float[2] + current_vox_max[2]).to(current_vox_max)
 
                 cell_vox_origin = current_vox_min
                 cell_vox_size = current_vox_max - current_vox_min
+                print(c_i, c_j, c_k, cell_vox_origin.numpy(), cell_vox_size.numpy())
 
                 # Bounding box of the cell in world coordinates
                 cell_bbox = scaled_bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
