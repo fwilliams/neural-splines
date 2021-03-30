@@ -10,33 +10,6 @@ from .falkon_kernels import NeuralSplineKernel, LaplaceKernelSphere, LinearAngle
 from .kmeans import kmeans
 
 
-def query_yes_no(question, default='no'):
-    """
-    Prompt the user for a yes or no input. Can accept either y/n, Y/N or yes/no as well as a default response
-    :param question: Question to prompt the user.
-    :param default: The default response on no input
-    :return: A boolean set to True if the user responded yes and False if the user responded no
-    """
-    if default is None:
-        prompt = " [y/n] "
-    elif default == 'yes':
-        prompt = " [Y/n] "
-    elif default == 'no':
-        prompt = " [y/N] "
-    else:
-        raise ValueError(f"Unknown setting '{default}' for default.")
-
-    while True:
-        try:
-            resp = input(question + prompt).strip().lower()
-            if default is not None and resp == '':
-                return default == 'yes'
-            else:
-                return distutils.util.strtobool(resp)
-        except ValueError:
-            print("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
-
-
 def make_triples(x, n, eps, homogeneous=False):
     """
     Convert a point cloud equipped with normals into a point cloud with points pertubed along those normals
@@ -68,12 +41,129 @@ def make_triples(x, n, eps, homogeneous=False):
     return x_triples, occ_triples
 
 
+def points_in_bbox(x, bbox):
+    """
+    Compute a mask indicating which points in x lie in the bouning box bbox
+    :param x: A point cloud represented as a tensor of shape [N, 3]
+    :param bbox: A bounding box reprented as 2 3D vectors (origin, size)
+    :return: A mask of shape [N] where True values correspond to points in x which lie inside bbox
+    """
+    mask = torch.logical_and(x > bbox[0], x <= bbox[0] + bbox[1])
+    mask = torch.min(mask, axis=-1)[0].to(torch.bool)
+    return mask
+
+
+def normalize_pointcloud_transform(x):
+    """
+    Compute an affine transformation that normalizes the point cloud x to lie in [-0.5, 0.5]^2
+    :param x: A point cloud represented as a tensor of shape [N, 3]
+    :return: An affine transformation represented as a tuple (t, s) where t is a translation and s is scale
+    """
+    min_x, max_x = x.min(0)[0], x.max(0)[0]
+    bbox_size = max_x - min_x
+
+    translate = -(min_x + 0.5 * bbox_size)
+    scale = 1.0 / torch.max(bbox_size)
+
+    return translate, scale
+
+
+def affine_transform_pointcloud(x, tx):
+    """
+    Apply the affine transform tx to the point cloud x
+    :param x: A pytorch tensor of shape [N, 3]
+    :param tx: An affine transformation represented as a tuple (t, s) where t is a translation and s is scale
+    :return: The transformed point cloud
+    """
+    translate, scale = tx
+    return scale * (x + translate)
+
+
+def affine_transform_bounding_box(bbox, tx):
+    """
+    Apply the affine transform tx to the bounding box bbox
+    :param bbox: A bounding box reprented as 2 3D vectors (origin, size)
+    :param tx: An affine transformation represented as a tuple (t, s) where t is a translation and s is scale
+    :return: The transformed point bounding box
+    """
+    translate, scale = tx
+    return scale * (bbox[0] + translate), scale * bbox[1]
+
+
+def voxel_chunks(grid_size, cells_per_axis):
+    """
+    Iterator over ranges which partition a voxel grid into non-overlapping chunks.
+    :param grid_size: Size of the voxel grid to split into chunks
+    :param cells_per_axis: Number of cells along each axis
+    :return: Each call returns a pair (vmin, vmax) where vmin is the minimum indexes of the voxel chunk and vmax is 
+             the maximum index. i.e. if vox is a voxel grid with shape grid_size, then vox[vmin:vmax] are the voxels
+             in the current chunk
+    """
+    if np.isscalar(cells_per_axis):
+        cells_per_axis = torch.tensor([cells_per_axis] * len(grid_size)).to(torch.int32)
+
+    current_vox_min = torch.tensor([0.0, 0.0, 0.0]).to(torch.float64)
+    current_vox_max = torch.tensor([0.0, 0.0, 0.0]).to(torch.float64)
+
+    cell_size_float = grid_size.to(torch.float64) / cells_per_axis
+
+    for c_i in range(cells_per_axis[0]):
+        current_vox_min[0] = current_vox_max[0]
+        current_vox_max[0] = cell_size_float[0] + current_vox_max[0]
+        current_vox_min[1:] = 0
+        current_vox_max[1:] = 0
+
+        for c_j in range(cells_per_axis[1]):
+            current_vox_min[1] = current_vox_max[1]
+            current_vox_max[1] = cell_size_float[1] + current_vox_max[1]
+            current_vox_min[2:] = 0
+            current_vox_max[2:] = 0
+
+            for c_k in range(cells_per_axis[2]):
+                current_vox_min[2] = current_vox_max[2]
+                current_vox_max[2] = cell_size_float[2] + current_vox_max[2]
+
+                vox_min = torch.round(current_vox_min).to(torch.int32)
+                vox_max = torch.round(current_vox_max).to(torch.int32)
+
+                yield (c_i, c_j, c_k), vox_min, vox_max
+
+
+def fit_cell(x, n, cell_bbox, seed, args):
+    padded_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
+    mask = points_in_bbox(x, padded_bbox)
+    x, n = x[mask], n[mask]
+    x, y = make_triples(x, n, args.eps, homogeneous=False)
+
+    tx = normalize_pointcloud_transform(x)
+    x = affine_transform_pointcloud(x, tx)
+    x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode,
+                                                               seed, print_message=False)
+
+    x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
+
+    model = fit_model(x, y, args.regularization, ny_count, center_selector,
+                      maxiters=args.cg_max_iters,
+                      kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
+                      variance=args.outer_layer_variance,
+                      verbose=args.verbose, print_message=False)
+
+    return model, tx
+
+
 def load_normalized_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
     return normalize_point_cloud(v, n, min_norm_normal, dtype)
 
 
 def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
+    """
+    Load a point cloud with normals, filtering out points whose normal has a magnitude below the given threshold.
+    :param filename: Path to a PLY file
+    :param min_norm_normal: The minimum norm of a normal below which we discard a point
+    :param dtype: The output dtype of the tensors returned
+    :return: A pair v, n,  where v is a an [N, 3]-shaped tensor of points, n is a [N, 3]-shaped tensor of unit normals
+    """
     v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
     # We use this mask to remove bad vertices
@@ -86,7 +176,23 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
 
     bbox = torch.from_numpy(x.min(0)), torch.from_numpy(x.max(0) - x.min(0))
 
-    return torch.from_numpy(x), torch.from_numpy(n), bbox
+    return torch.from_numpy(x).to(dtype), torch.from_numpy(n).to(dtype), bbox
+
+
+def point_cloud_bounding_box(x, scale=1.0):
+    """
+    Get the axis-aligned bounding box for a point cloud (possibly scaled by some factor)
+    :param x: A point cloud represented as an [N, 3]-shaped tensor
+    :param scale: A scale factor by which to scale the bounding box diagonal
+    :return: The (possibly scaled) axis-aligned bounding box for a point cloud represented as a pair (origin, size)
+    """
+    bb_min, bb_size = torch.from_numpy(x.min(0)), torch.from_numpy(x.max(0) - x.min(0))
+    bb_diameter = torch.norm(bb_size)
+    bb_unit_dir = bb_size / bb_diameter
+    scaled_bb_size = bb_size * scale
+    scaled_bb_diameter = torch.norm(scaled_bb_size)
+    scaled_bb_min = bb_min - 0.5 * (scaled_bb_diameter - bb_diameter) * bb_unit_dir
+    return scaled_bb_min, scaled_bb_size
 
 
 def normalize_point_cloud(v, n, min_norm_normal=1e-5, dtype=torch.float64):

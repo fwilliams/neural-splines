@@ -5,69 +5,16 @@ import point_cloud_utils as pcu
 import torch
 from skimage.measure import marching_cubes
 
-from common import make_triples, load_point_cloud, scale_bounding_box_diameter, \
-    generate_nystrom_samples, fit_model
-
-
-def points_in_bbox(x, bbox):
-    mask = torch.logical_and(x > bbox[0], x <= bbox[0] + bbox[1])
-    mask = torch.min(mask, axis=-1)[0].to(torch.bool)
-    return mask
-
-
-def normalizing_transform(x):
-    min_x, max_x = x.min(0)[0], x.max(0)[0]
-    bbox_size = max_x - min_x
-
-    translate = -(min_x + 0.5 * bbox_size)
-    scale = 1.0 / torch.max(bbox_size)
-
-    return translate, scale
-
-
-def inverse_affine_transform(tx):
-    translate, scale = tx
-    return -translate, 1.0 / scale
-
-
-def affine_transform_point_cloud(x, tx):
-    translate, scale = tx
-    return scale * (x + translate)
-
-
-def affine_transform_bounding_box(bbox, tx):
-    translate, scale = tx
-    return scale * (bbox[0] + translate), scale * bbox[1]
-
-
-def fit_cell(x, n, cell_bbox, seed, args):
-    padded_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
-    mask = points_in_bbox(x, padded_bbox)
-    x, n = x[mask], n[mask]
-    x, y = make_triples(x, n, args.eps, homogeneous=False)
-
-    tx = normalizing_transform(x)
-    x = affine_transform_point_cloud(x, tx)
-    x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode,
-                                                               seed, print_message=False)
-
-    x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
-
-    model = fit_model(x, y, args.regularization, ny_count, center_selector,
-                      maxiters=args.cg_max_iters,
-                      kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
-                      variance=args.outer_layer_variance,
-                      verbose=args.verbose, print_message=False)
-
-    return model, tx
+from common import load_point_cloud, point_cloud_bounding_box, fit_cell, affine_transform_pointcloud, voxel_chunks, \
+    points_in_bbox
 
 
 def eval_cell(model, origin, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
     xmin = origin + (cell_vox_min + 0.5) * voxel_size  # [3]
     xmax = origin + (cell_vox_max - 0.5) * voxel_size  # [3]
 
-    xmin = affine_transform_point_cloud(xmin.unsqueeze(0), tx).squeeze()
-    xmax = affine_transform_point_cloud(xmax.unsqueeze(0), tx).squeeze()
+    xmin = affine_transform_pointcloud(xmin.unsqueeze(0), tx).squeeze()
+    xmax = affine_transform_pointcloud(xmax.unsqueeze(0), tx).squeeze()
 
     xmin, xmax = xmin.numpy(), xmax.numpy()
     cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
@@ -81,37 +28,6 @@ def eval_cell(model, origin, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
     ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
 
     return ygrid
-
-
-def voxel_chunks(out_grid_size, cells_per_axis):
-    if np.isscalar(cells_per_axis):
-        cells_per_axis = torch.tensor([cells_per_axis] * len(out_grid_size)).to(torch.int32)
-
-    current_vox_min = torch.tensor([0.0, 0.0, 0.0]).to(torch.float64)
-    current_vox_max = torch.tensor([0.0, 0.0, 0.0]).to(torch.float64)
-
-    cell_size_float = out_grid_size.to(torch.float64) / cells_per_axis
-
-    for c_i in range(cells_per_axis[0]):
-        current_vox_min[0] = current_vox_max[0]
-        current_vox_max[0] = cell_size_float[0] + current_vox_max[0]
-        current_vox_min[1:] = 0
-        current_vox_max[1:] = 0
-
-        for c_j in range(cells_per_axis[1]):
-            current_vox_min[1] = current_vox_max[1]
-            current_vox_max[1] = cell_size_float[1] + current_vox_max[1]
-            current_vox_min[2:] = 0
-            current_vox_max[2:] = 0
-
-            for c_k in range(cells_per_axis[2]):
-                current_vox_min[2] = current_vox_max[2]
-                current_vox_max[2] = cell_size_float[2] + current_vox_max[2]
-
-                vox_min = torch.round(current_vox_min).to(torch.int32)
-                vox_max = torch.round(current_vox_max).to(torch.int32)
-
-                yield (c_i, c_j, c_k), vox_min, vox_max
 
 
 def main():
@@ -200,9 +116,9 @@ def main():
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    x, n = load_point_cloud(args.input_point_cloud, dtype=dtype)
 
-    scaled_bbox = scale_bounding_box_diameter(bbox, args.scale)
+    scaled_bbox = point_cloud_bounding_box(x, args.scale)
     out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
     voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
 
