@@ -106,8 +106,8 @@ def fit_cell(x, n, cell_bbox, seed, args):
     x, n = x[mask], n[mask]
     x, y = make_triples(x, n, args.eps, homogeneous=False)
 
-    # tx = normalizing_transform(x)
-    tx = (-(padded_bbox[0] + padded_bbox[1] * 0.5), 1.0 / torch.max(padded_bbox[1]))
+    tx = normalizing_transform(x)
+    # tx = (-(padded_bbox[0] + padded_bbox[1] * 0.5), 1.0 / torch.max(padded_bbox[1]))
     x = affine_transform_point_cloud(x, tx)
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
 
@@ -295,8 +295,9 @@ def main():
 
         print(cell_idx, cell_vox_min, cell_vox_max)
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
+        recon_ijk = eval_cell(model_ijk, cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
-            eval_cell(model_ijk, cell_vox_min, cell_vox_max, voxel_size, tx, dtype).to(out_grid.dtype)
+            recon_ijk
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             True
 
