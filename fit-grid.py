@@ -126,7 +126,8 @@ def fit_cell(x, n, cell_bbox, seed, args):
 def eval_cell(model, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
     xmin = (cell_vox_min + 0.5) * voxel_size  # [3]
     xmax = (cell_vox_max - 0.5) * voxel_size  # [3]
-
+    print("XMINMAX", xmin, xmax)
+    print("TX", tx)
     xmin = affine_transform_point_cloud(xmin.unsqueeze(0), tx).squeeze()
     xmax = affine_transform_point_cloud(xmax.unsqueeze(0), tx).squeeze()
     print("X-range recon", xmin, xmax)
