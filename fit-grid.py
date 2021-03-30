@@ -288,9 +288,9 @@ def main():
                 cell_vox_min[1]:cell_vox_max[1],
                 cell_vox_min[2]:cell_vox_max[2]] = True
 
-                cell_vox_min[2] = cell_vox_max[2]
-            cell_vox_min[1] = cell_vox_max[1]
-        cell_vox_min[0] = cell_vox_max[0]
+                current_vox_min[2] = current_vox_max[2]
+            current_vox_min[1] = current_vox_max[1]
+        current_vox_min[0] = current_vox_max[0]
     torch.save((cell_bboxes, cell_vox_grids, x), "debug.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
