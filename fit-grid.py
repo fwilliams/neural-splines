@@ -106,10 +106,12 @@ def fit_cell(x, n, cell_bbox, seed, args):
     x, n = x[mask], n[mask]
     x, y = make_triples(x, n, args.eps, homogeneous=False)
 
+    print("X IN", x.min(0)[0], x.max(0)[0])
+
     tx = normalizing_transform(x)
     # tx = (-(padded_bbox[0] + padded_bbox[1] * 0.5), 1.0 / torch.max(padded_bbox[1]))
     x = affine_transform_point_cloud(x, tx)
-    print("X-range cell", x.min(0)[0], x.max(0)[0])
+    print("TX BBOX", x.min(0)[0], x.max(0)[0])
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
 
     x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
