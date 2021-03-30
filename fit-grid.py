@@ -293,13 +293,14 @@ def main():
 
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
+        print(cell_idx, cell_bbox[0], cell_bbox[0] + cell_bbox[1], mask_cell.sum())
         if mask_cell.sum() <= 0:
             continue
 
         # Fit the model and evaluate it on the grid for this cell
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
         recon_ijk = eval_cell(model_ijk, scaled_bbox[0], cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
-
+        print()
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             recon_ijk
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
