@@ -260,7 +260,7 @@ def main():
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
                 print(f"    num points {mask_cell.sum()}")
-                return
+
                 if mask_cell.sum() <= 0:
                     continue
 
