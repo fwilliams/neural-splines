@@ -221,9 +221,12 @@ def main():
     np.random.seed(seed)
 
     x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
+
     if x.shape[0] > args.voxel_downsample_threshold:
         x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
         x, n = torch.from_numpy(x), torch.from_numpy(n)
+    print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
     scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
     print(bbox, scaled_bbox)
@@ -256,7 +259,7 @@ def main():
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
                 print(f"    num points {mask_cell.sum()}")
-
+                return
                 if mask_cell.sum() <= 0:
                     continue
 
