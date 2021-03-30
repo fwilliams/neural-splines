@@ -256,6 +256,7 @@ def main():
                 cell_vox_size = torch.floor(cell_size_float)
                 add_one = torch.tensor([1 if c.item() == args.cells_per_axis - 1 else 0 for c in cell_idx])
                 cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
+                print("  ", c_i, c_j, c_k, add_one, add_one * torch.ceil(cell_size_float - cell_vox_size))`
                 cell_vox_origin = (cell_idx * cell_vox_size).to(torch.int32)
 
                 # Bounding box of the cell in world coordinates
@@ -269,10 +270,10 @@ def main():
                 if mask_cell.sum() <= 0:
                     continue
 
-                print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
-                print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
-                print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
-                print(f"    num points {mask_cell.sum()}")
+                # print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
+                # print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
+                # print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
+                # print(f"    num points {mask_cell.sum()}")
 
                 model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
