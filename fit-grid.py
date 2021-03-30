@@ -252,12 +252,14 @@ def main():
         cell_vox_grids.append([])
         current_vox_min[0] = current_vox_max[0]
         current_vox_max[0] = torch.round(cell_size_float[0] + current_vox_max[0]).to(current_vox_max)
+        current_vox_min[1:] = 0
 
         for c_j in range(args.cells_per_axis):
             cell_bboxes[c_i].append([])
             cell_vox_grids[c_i].append([])
-            current_vox_min[2] = current_vox_max[2]
+            current_vox_min[1] = current_vox_max[1]
             current_vox_max[1] = torch.round(cell_size_float[1] + current_vox_max[1]).to(current_vox_max)
+            current_vox_min[2:] = 0
 
             for c_k in range(args.cells_per_axis):
                 current_vox_min[2] = current_vox_max[2]
