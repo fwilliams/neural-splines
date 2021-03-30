@@ -242,7 +242,6 @@ def main():
                 # Size of the cell in voxels (pad the last cell with an extra voxel)
                 cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
                 cell_vox_size = torch.floor(cell_size_float)
-                # print(args.cells_per_axis, cell_idx)
                 add_one = torch.tensor([1 if c.item() == args.cells_per_axis - 1 else 0 for c in cell_idx])
                 cell_vox_size += add_one * torch.ceil(cell_size_float - cell_vox_size).to(torch.int32)
                 cell_vox_origin = cell_idx * cell_vox_size
@@ -250,8 +249,13 @@ def main():
                 # Bounding box of the cell in world coordinates
                 cell_bbox = cell_vox_size * voxel_size, cell_vox_origin * voxel_size
 
+                print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
+                print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
+
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
+                print(f"f    num points {mask_cell.sum()}")
+
                 if mask_cell.sum() <= 0:
                     continue
 
