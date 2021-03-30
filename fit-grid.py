@@ -251,6 +251,7 @@ def main():
 
                 print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
                 print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
+                print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
