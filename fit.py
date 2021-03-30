@@ -5,7 +5,7 @@ import point_cloud_utils as pcu
 import torch
 from skimage.measure import marching_cubes
 
-from common import load_point_cloud, scale_bounding_box_diameter, fit_cell, eval_cell, point_cloud_bounding_box
+from common import load_point_cloud, fit_model_to_pointcloud, eval_model_on_grid, point_cloud_bounding_box
 
 
 def main():
@@ -102,8 +102,8 @@ def main():
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    model, tx = fit_cell(x, n, seed, args)
-    recon = eval_cell(model, scaled_bbox, tx, out_grid_size)
+    model, tx = fit_model_to_pointcloud(x, n, args, seed=seed)
+    recon = eval_model_on_grid(model, scaled_bbox, tx, out_grid_size)
     v, f, n, c = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 

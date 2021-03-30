@@ -11,7 +11,7 @@ from falkon.sparse.sparse_tensor import SparseTensor
 from torch.utils.dlpack import to_dlpack
 
 
-def extract_float(d):
+def _extract_float(d):
     if isinstance(d, torch.Tensor):
         try:
             # tensor.item() works if tensor is a scalar, otherwise it throws
@@ -32,7 +32,7 @@ class NeuralSplineKernel(Kernel, KeopsKernelMixin, ABC):
     def __init__(self, variance: float = 1.0, opt: Optional[FalkonOptions] = None):
         super().__init__("NeuralSpline", self.kernel_type, opt)
         self.debug = opt.debug if opt is not None else False
-        self.variance = extract_float(variance)
+        self.variance = _extract_float(variance)
 
     def extra_mem(self):
         return {
@@ -215,8 +215,8 @@ class LaplaceKernelSphere(Kernel, KeopsKernelMixin, ABC):
     def __init__(self, alpha, gamma, opt: Optional[FalkonOptions] = None):
         super().__init__("LaplaceKernelSphere", self.kernel_type, opt)
         self.debug = opt.debug if opt is not None else False
-        self.alpha = extract_float(alpha)
-        self.gamma = extract_float(gamma)
+        self.alpha = _extract_float(alpha)
+        self.gamma = _extract_float(gamma)
 
     def extra_mem(self):
         return {
