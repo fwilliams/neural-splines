@@ -96,7 +96,7 @@ def main():
 
     # Downsample points to grid resolution if there are enough points
     if x.shape[0] > args.voxel_downsample_threshold:
-        print("Downsampling input point cloud to voxel resolution")
+        print("Downsampling input point cloud to voxel resolution.")
         x, n, _ = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
                                                         min_bound=scaled_bbox[0],
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])

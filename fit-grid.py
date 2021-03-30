@@ -102,7 +102,7 @@ def main():
 
     # Downsample points to grid resolution if there are enough points
     if x.shape[0] > args.voxel_downsample_threshold:
-        print("Downsampling input point cloud to voxel resolution")
+        print("Downsampling input point cloud to voxel resolution.")
         x, n, _ = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
                                                         min_bound=scaled_bbox[0],
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
@@ -136,7 +136,7 @@ def main():
         cell_model, tx = fit_model_to_pointcloud(x[mask_padded_cell], n[mask_padded_cell], args,
                                                  seed=seed, print_message=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
-                                        cell_vox_min=cell_vmin, cell_vox_max=cell_vmax)
+                                        cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
 

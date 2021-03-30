@@ -139,7 +139,7 @@ def fit_model_to_pointcloud(x, n, args, seed=0, print_message=True):
     return model, tx
 
 
-def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell_vox_max=None):
+def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell_vox_max=None, print_message=True):
     """
     Evaluate the trained model (output of fit_model_to_pointcloud) on a voxel grid.
     :param model: The trained model returned from fit_model_to_pointcloud
@@ -151,6 +151,7 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
     :param voxel_grid_size: The size of the voxel grid on which to reconstruct
     :param cell_vox_min: If not None, reconstruct on the subset of the voxel grid starting at these indices.
     :param cell_vox_max: If not None, reconstruct on the subset of the voxel grid ending at these indices.
+    :param print_message: If true, print status messages to stdout.
     :return: A tensor representing the model evaluated on a grid.
     """
     bbox_origin, bbox_size = bbox
@@ -161,6 +162,10 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
 
     if cell_vox_max is None:
         cell_vox_max = voxel_grid_size
+
+    if print_message:
+        print(f"Evaluating model on grid of size {(_.item() for _ in (cell_vox_max - cell_vox_min))}.")
+    eval_start_time = time.time()
 
     xmin = bbox_origin + (cell_vox_min + 0.5) * voxel_size
     xmax = bbox_origin + (cell_vox_max - 0.5) * voxel_size
@@ -178,6 +183,9 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(model.alpha_.dtype)
 
     ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
+
+    if print_message:
+        print(f"Evaluated model in {time.time() - eval_start_time}s.")
 
     return ygrid
 
