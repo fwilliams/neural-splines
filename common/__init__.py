@@ -129,13 +129,13 @@ def voxel_chunks(grid_size, cells_per_axis):
                 yield (c_i, c_j, c_k), vox_min, vox_max
 
 
-def fit_cell(x, n, seed, args):
+def fit_cell(x, n, seed, args, print_message=True):
     x, y = make_triples(x, n, args.eps, homogeneous=False)
 
     tx = normalize_pointcloud_transform(x)
     x = affine_transform_pointcloud(x, tx)
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode,
-                                                               seed, print_message=False)
+                                                               seed, print_message=print_message)
 
     x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
@@ -143,7 +143,7 @@ def fit_cell(x, n, seed, args):
                       maxiters=args.cg_max_iters,
                       kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                       variance=args.outer_layer_variance,
-                      verbose=args.verbose, print_message=False)
+                      verbose=args.verbose, print_message=print_message)
 
     return model, tx
 
@@ -261,6 +261,8 @@ def scale_bounding_box_diameter(bbox, scale):
 
 
 def generate_nystrom_samples(x, num_samples, sampling_method, seed, print_message=True):
+    if x.shape[1] != 3:
+        raise ValueError(f"Invalid shape for x, must be [N, 3] but got {x.shape}")
     if sampling_method == 'random':
         if print_message:
             print("Using Nyström samples chosen uniformly at random from the input.")
@@ -272,6 +274,7 @@ def generate_nystrom_samples(x, num_samples, sampling_method, seed, print_messag
             print("Generating blue noise Nyström samples.")
         ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=seed)
         x_ny = x[ny_idx]
+        x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif sampling_method == 'k-means':

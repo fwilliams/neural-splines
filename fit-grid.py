@@ -133,7 +133,7 @@ def main():
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
         # Fit the model and evaluate it on the grid for this cell
-        model_ijk, tx = fit_cell(x[mask_padded_cell], n[mask_padded_cell], seed, args)
+        model_ijk, tx = fit_cell(x[mask_padded_cell], n[mask_padded_cell], seed, args, print_message=False)
         recon_ijk = eval_cell(model_ijk, scaled_bbox, tx, out_grid_size,
                               cell_vox_min=cell_vox_min, cell_vox_max=cell_vox_max)
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
