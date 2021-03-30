@@ -258,7 +258,7 @@ def main():
                 cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
                 print("  ", c_i, c_j, c_k, add_one, add_one * torch.ceil(cell_size_float - cell_vox_size))
                 print("    ", cell_size_float, cell_vox_size)
-                print("    ", torch.ceil(cell_size_float - cell_vox_size))
+                print("    ", torch.ceil(cell_size_float - cell_vox_size.to(cell_size_float)))
                 cell_vox_origin = (cell_idx * cell_vox_size).to(torch.int32)
 
                 # Bounding box of the cell in world coordinates
