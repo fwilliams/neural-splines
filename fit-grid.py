@@ -9,66 +9,6 @@ from common import make_triples, load_point_cloud, scale_bounding_box_diameter, 
     generate_nystrom_samples, fit_model
 
 
-def reconstruct_on_grid(model, full_grid_size, full_bbox, cell_bbox, cell_bbox_normalized, scale, out, out_mask,
-                        dtype=torch.float64):
-    full_bbmin, full_bbsize = full_bbox
-    cell_bbmin, cell_bbsize = cell_bbox
-
-    # print("FULL BBOX", full_bbmin, full_bbsize)
-    # print("CELL BBOX", cell_bbmin, cell_bbsize)
-
-    # print("  full_bbsize, full_grid_width", full_bbsize, full_grid_width)
-    # full_grid_size = np.round(full_bbsize / scale * full_grid_width).astype(np.int64)
-    # print("  full_grid_size", full_grid_size)
-
-    cell_bbmin_rel = (cell_bbmin - full_bbmin) / full_bbsize
-    cell_bbmax_rel = (cell_bbmin + cell_bbsize - full_bbmin) / full_bbsize
-
-    # print("RELATIVE BBOX", cell_bbmin_rel, cell_bbmax_rel)
-
-    cell_vox_min = np.round(cell_bbmin_rel * full_grid_size).astype(np.int32)
-    cell_vox_max = np.minimum(np.round(cell_bbmax_rel * full_grid_size).astype(np.int32) + 1, full_grid_size)
-    print(" ", cell_vox_min, cell_vox_max)
-    cell_vox_size = cell_vox_max - cell_vox_min
-
-    plt_range_min, plt_range_max = cell_bbox_normalized[0], cell_bbox_normalized[0] + cell_bbox_normalized[1]
-    xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:cell_vox_size[0] * 1j,
-                                                  plt_range_min[1]:plt_range_max[1]:cell_vox_size[1] * 1j,
-                                                  plt_range_min[2]:plt_range_max[2]:cell_vox_size[2] * 1j]],
-                     axis=-1)
-    xgrid = torch.from_numpy(xgrid).to(dtype)
-    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
-    # print(full_grid_size, cell_vox_size)
-    ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int)))
-    ygrid = ygrid.detach().cpu().numpy()
-
-    print(cell_vox_max - cell_vox_min)
-    print(out[cell_vox_min[0]:cell_vox_max[0],
-          cell_vox_min[1]:cell_vox_max[1],
-          cell_vox_min[2]:cell_vox_max[2]].shape)
-    out[cell_vox_min[0]:cell_vox_max[0],
-        cell_vox_min[1]:cell_vox_max[1],
-        cell_vox_min[2]:cell_vox_max[2]] = ygrid.astype(out.dtype)
-    out_mask[cell_vox_min[0]:cell_vox_max[0],
-             cell_vox_min[1]:cell_vox_max[1],
-             cell_vox_min[2]:cell_vox_max[2]] = True
-
-    # nnz_mask = out[cell_vox_min[0]:cell_vox_max[0],
-    #            cell_vox_min[1]:cell_vox_max[1],
-    #            cell_vox_min[2]:cell_vox_max[2]] > 0.0
-    # out[cell_vox_min[0]:cell_vox_max[0],
-    #     cell_vox_min[1]:cell_vox_max[1],
-    #     cell_vox_min[2]:cell_vox_max[2]][~nnz_mask] = ygrid[~nnz_mask].astype(out.dtype)
-    # out[cell_vox_min[0]:cell_vox_max[0],
-    #     cell_vox_min[1]:cell_vox_max[1],
-    #     cell_vox_min[2]:cell_vox_max[2]][nnz_mask] += ygrid[nnz_mask].astype(out.dtype)
-    # out[cell_vox_min[0]:cell_vox_max[0],
-    #     cell_vox_min[1]:cell_vox_max[1],
-    #     cell_vox_min[2]:cell_vox_max[2]][nnz_mask] /= 2.0
-
-    return ygrid
-
-
 def points_in_bbox(x, bbox):
     mask = torch.logical_and(x > bbox[0], x <= bbox[0] + bbox[1])
     mask = torch.min(mask, axis=-1)[0].to(torch.bool)
@@ -278,11 +218,6 @@ def main():
     out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
     out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
 
-    print("full grid size is", out_grid_size)
-    print("bbox min is", scaled_bbox[0])
-    print("bbox max is", scaled_bbox[0] + scaled_bbox[1])
-    print("x range is", x.min(0)[0], x.max(0)[0])
-
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
     for cell_idx, cell_vox_min, cell_vox_max in voxel_chunks(out_grid_size, args.cells_per_axis):
@@ -293,14 +228,12 @@ def main():
 
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
-        print(cell_idx, cell_bbox[0], cell_bbox[0] + cell_bbox[1], mask_cell.sum())
         if mask_cell.sum() <= 0:
             continue
 
         # Fit the model and evaluate it on the grid for this cell
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
         recon_ijk = eval_cell(model_ijk, scaled_bbox[0], cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
-        print()
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             recon_ijk
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
