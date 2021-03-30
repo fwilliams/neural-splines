@@ -239,7 +239,7 @@ def main():
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             True
 
-    torch.save(out_grid, "out.grid.pth")
+    torch.save(out_grid, out_mask, scaled_bbox, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
     pcu.write_ply(f"recon.ply",
