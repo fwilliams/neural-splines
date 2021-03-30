@@ -107,7 +107,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
     x, y = make_triples(x, n, args.eps, homogeneous=False)
 
     tx = normalizing_transform(x)
-    tx = (-(cell_bbox[0] + cell_bbox[1] * 0.5), 1.0 / cell_bbox[1])
+    tx = (-(cell_bbox[0] + cell_bbox[1] * 0.5), 1.0 / torch.max(cell_bbox[1]))
     x = affine_transform_point_cloud(x, tx)
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
 
