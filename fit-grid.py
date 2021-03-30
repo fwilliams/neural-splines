@@ -253,7 +253,7 @@ def main():
                 cell_vox_origin = (cell_idx * cell_vox_size).to(torch.int32)
 
                 # Bounding box of the cell in world coordinates
-                cell_bbox = cell_vox_origin * voxel_size, cell_vox_size * voxel_size
+                cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
