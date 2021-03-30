@@ -117,7 +117,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
                       kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                       variance=args.outer_layer_variance,
                       verbose=args.verbose)
-    recon_bbox = affine_transform_bounding_box(cell_bbox, inverse_affine_transform(tx))
+    recon_bbox = affine_transform_bounding_box(cell_bbox, tx)
 
     return model, recon_bbox
 
@@ -277,8 +277,6 @@ def main():
         cell_vox_size = cell_vox_max - cell_vox_min
         cell_bbox = scaled_bbox[0] + cell_vox_min * voxel_size, cell_vox_size * voxel_size
 
-        print(cell_idx, cell_vox_min.numpy(), cell_vox_size.numpy())
-
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
         if mask_cell.sum() <= 0:
@@ -288,6 +286,7 @@ def main():
         # print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
         # print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
         # print(f"    num points {mask_cell.sum()}")
+        # print(cell_idx, cell_vox_min.numpy(), cell_vox_size.numpy())
 
         model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
