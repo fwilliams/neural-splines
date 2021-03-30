@@ -57,7 +57,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
                       maxiters=args.cg_max_iters,
                       kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                       variance=args.outer_layer_variance,
-                      verbose=args.verbose)
+                      verbose=args.verbose, print_message=False)
 
     return model, tx
 
