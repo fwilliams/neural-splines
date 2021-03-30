@@ -5,8 +5,7 @@ import point_cloud_utils as pcu
 import torch
 from skimage.measure import marching_cubes
 
-from common import make_triples, load_normalized_point_cloud, scale_bounding_box_diameter, generate_nystrom_samples, \
-    fit_model
+from common import load_point_cloud, scale_bounding_box_diameter, fit_cell, eval_cell, point_cloud_bounding_box
 
 
 def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input, dtype=torch.float64):
@@ -114,35 +113,31 @@ def main():
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    x, n, bbox_input, bbox_normalized = load_normalized_point_cloud(args.input_point_cloud, dtype=dtype)
+    x, n = load_point_cloud(args.input_point_cloud, dtype=dtype)
+
+    scaled_bbox = point_cloud_bounding_box(x, args.scale)
+    out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
+    voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
+
+    # Downsample points to grid resolution if there are enough points
     if x.shape[0] > args.voxel_downsample_threshold:
-        x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
+        print("Downsampling input point cloud to voxel resolution")
+        x, n, _ = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
+                                                        min_bound=scaled_bbox[0],
+                                                        max_bound=scaled_bbox[0] + scaled_bbox[1])
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    x, y = make_triples(x, n, args.eps)
-    x_homogeneous = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
+    model, tx = fit_cell(x, n, scaled_bbox, seed, args)
+    recon = eval_cell(model, scaled_bbox, tx, out_grid_size)
+    v, f, n, c = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
+    v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 
-    x_ny, center_selector, ny_count = generate_nystrom_samples(x_homogeneous,
-                                                               args.num_nystrom_samples,
-                                                               args.nystrom_mode,
-                                                               seed)
-
-    print(f"Fitting {x_homogeneous.shape[0]} points using {ny_count} Nyström samples.")
-    mdl = fit_model(x_homogeneous, y, args.regularization, ny_count, center_selector, maxiters=args.cg_max_iters,
-                    kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
-                    variance=args.outer_layer_variance,
-                    verbose=args.verbose)
-    grid, mesh = reconstruct_on_voxel_grid(mdl, args.grid_size, args.scale, bbox_normalized, bbox_input, dtype=dtype)
-
-    pcu.write_ply(args.out, *mesh)
+    pcu.write_ply(args.out, v.astype(np.float32), f.astype(np.int32), n.astype(np.float32), c.astype(np.float32))
     if args.save_grid:
-        np.savez(args.out + ".grid", grid=grid.detach().cpu().numpy())
+        np.savez(args.out + ".grid", grid=recon.detach().cpu().numpy())
 
     if args.save_points:
-        if x_ny is None:
-            x_ny = mdl.ny_points_[:, :3] if mdl.ny_points_ is not None else None
-        else:
-            x_ny = x_ny[:, :3]
+        x_ny = model.ny_points_[:, :3] if model.ny_points_ is not None else None
         np.savez(args.out + ".pts",
                  x=x.detach().cpu().numpy(),
                  y=y.detach().cpu().numpy(),
