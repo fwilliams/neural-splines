@@ -129,9 +129,8 @@ def eval_cell(model, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
     xmin = affine_transform_point_cloud(xmin, tx)
     xmax = affine_transform_point_cloud(xmax, tx)
 
-    cell_vox_min = cell_vox_min.numpy()
-    cell_vox_max = cell_vox_max.numpy()
-    cell_vox_size = cell_vox_max - cell_vox_min
+    xmin, xmax = xmin.numpy(), xmax.numpy()
+    cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
 
     xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_vox_size[0] * 1j,
                                                   xmin[1]:xmax[1]:cell_vox_size[1] * 1j,
