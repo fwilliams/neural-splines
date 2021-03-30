@@ -243,37 +243,26 @@ def main():
     cell_bboxes = []
     cell_vox_grids = []
     acc = torch.zeros(3)
+    current_vox_min = torch.tensor([0, 0, 0]).to(torch.int32)
+    current_vox_max = torch.tensor([0, 0, 0]).to(torch.int32)
+    cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
 
     for c_i in range(args.cells_per_axis):
         cell_bboxes.append([])
         cell_vox_grids.append([])
+        current_vox_max[0] = torch.round(cell_size_float[0] + current_vox_max[0]).to(current_vox_max)
         for c_j in range(args.cells_per_axis):
             cell_bboxes[c_i].append([])
             cell_vox_grids[c_i].append([])
+            current_vox_max[1] = torch.round(cell_size_float[1] + current_vox_max[1]).to(current_vox_max)
             for c_k in range(args.cells_per_axis):
-                cell_idx = torch.tensor((c_i, c_j, c_k)).to(torch.int32)
+                current_vox_max[2] = torch.round(cell_size_float[2] + current_vox_max[2]).to(current_vox_max)
 
-                cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
-                cell_vox_size = torch.floor(cell_size_float)
-                acc = acc + (cell_size_float - cell_vox_size)
-                cell_vox_size += torch.floor(acc)
-                acc = acc - torch.floor(acc)
-                add_one = torch.tensor([1 if c.item() == args.cells_per_axis - 1 else 0 for c in cell_idx])
-
-                if add_one.sum() > 0:
-                    print("  ", c_i, c_j, c_k, acc)
-                    print("    ", cell_size_float, cell_vox_size)
-                    print("    ", cell_size_float - cell_vox_size.to(cell_size_float))
-                    print("    ", torch.ceil(cell_size_float - cell_vox_size))
-                    print("    ", add_one * torch.ceil(cell_size_float - cell_vox_size))
-                    print("    ", (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32))
-
-                # Size of the cell in voxels (pad the last cell with an extra voxel)
-                cell_vox_origin = (cell_idx * cell_vox_size).to(torch.int32)
-                cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
+                cell_vox_origin = current_vox_min
+                cell_vox_size = current_vox_max - current_vox_min
 
                 # Bounding box of the cell in world coordinates
-                cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
+                cell_bbox = scaled_bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
 
                 cell_bboxes[c_i][c_j].append(cell_bbox)
                 cell_vox_grids[c_i][c_j].append((cell_vox_origin, cell_vox_size))
@@ -299,6 +288,9 @@ def main():
                 cell_vox_min[1]:cell_vox_max[1],
                 cell_vox_min[2]:cell_vox_max[2]] = True
 
+                cell_vox_min[2] = cell_vox_max[2]
+            cell_vox_min[1] = cell_vox_max[1]
+        cell_vox_min[0] = cell_vox_max[0]
     torch.save((cell_bboxes, cell_vox_grids, x), "debug.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
