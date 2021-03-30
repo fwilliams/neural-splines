@@ -242,6 +242,8 @@ def main():
 
     cell_bboxes = []
     cell_vox_grids = []
+    acc = torch.zeros(3)
+
     for c_i in range(args.cells_per_axis):
         cell_bboxes.append([])
         cell_vox_grids.append([])
@@ -253,10 +255,13 @@ def main():
 
                 cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
                 cell_vox_size = torch.floor(cell_size_float)
+                acc = acc + (cell_size_float - cell_vox_size)
+                cell_vox_size += torch.floor(acc)
+                acc = acc - torch.floor(acc)
                 add_one = torch.tensor([1 if c.item() == args.cells_per_axis - 1 else 0 for c in cell_idx])
 
                 if add_one.sum() > 0:
-                    print("  ", c_i, c_j, c_k, add_one, add_one * torch.ceil(cell_size_float - cell_vox_size))
+                    print("  ", c_i, c_j, c_k, acc)
                     print("    ", cell_size_float, cell_vox_size)
                     print("    ", cell_size_float - cell_vox_size.to(cell_size_float))
                     print("    ", torch.ceil(cell_size_float - cell_vox_size))
