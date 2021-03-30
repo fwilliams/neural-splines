@@ -174,9 +174,7 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     n = n[mask].astype(np.float64)
     n /= np.linalg.norm(n, axis=-1, keepdims=True)
 
-    bbox = torch.from_numpy(x.min(0)), torch.from_numpy(x.max(0) - x.min(0))
-
-    return torch.from_numpy(x).to(dtype), torch.from_numpy(n).to(dtype), bbox
+    return torch.from_numpy(x).to(dtype), torch.from_numpy(n).to(dtype)
 
 
 def point_cloud_bounding_box(x, scale=1.0):
