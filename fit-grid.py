@@ -262,7 +262,7 @@ def main():
 
                 cell_vox_origin = current_vox_min
                 cell_vox_size = current_vox_max - current_vox_min
-                print(c_i, c_j, c_k, cell_vox_origin.numpy(), cell_vox_size.numpy())
+                print(c_i, c_j, c_k, cell_vox_origin.numpy(), cell_vox_size.numpy(), current_vox_min.numpy(), current_vox_max.numpy())
 
                 # Bounding box of the cell in world coordinates
                 cell_bbox = scaled_bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
