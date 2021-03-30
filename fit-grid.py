@@ -91,9 +91,9 @@ def main():
         seed = args.seed
     else:
         seed = np.random.randint(2 ** 32 - 1)
-    print("Using random seed", seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
+    print("Using random seed", seed)
 
     x, n = load_point_cloud(args.input_point_cloud, dtype=dtype)
 

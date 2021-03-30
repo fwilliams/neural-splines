@@ -84,9 +84,9 @@ def main():
         seed = args.seed
     else:
         seed = np.random.randint(2 ** 32 - 1)
-    print("Using seed", seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
+    print("Using random seed", seed)
 
     x, n = load_point_cloud(args.input_point_cloud, dtype=dtype)
 
@@ -115,7 +115,8 @@ def main():
         x_ny = model.ny_points_[:, :3] if model.ny_points_ is not None else None
         np.savez(args.out + ".pts",
                  x=x.detach().cpu().numpy(),
-                 y=y.detach().cpu().numpy(),
+                 n=n.detach().cpu().numpy(),
+                 eps=args.eps,
                  x_ny=x_ny.detach().cpu().numpy())
 
 
