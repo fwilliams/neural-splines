@@ -240,10 +240,14 @@ def main():
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
-    cell_bboxes = [[[]]]
-    cell_vox_grids = [[[]]]
+    cell_bboxes = []
+    cell_vox_grids = []
     for c_i in range(args.cells_per_axis):
+        cell_bboxes.append([])
+        cell_vox_grids.append([])
         for c_j in range(args.cells_per_axis):
+            cell_bboxes[c_i].append([])
+            cell_vox_grids[c_i].append([])
             for c_k in range(args.cells_per_axis):
                 cell_idx = torch.tensor((c_i, c_j, c_k)).to(torch.int32)
 
@@ -258,7 +262,7 @@ def main():
                 cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
 
                 cell_bboxes[c_i][c_j][c_k] = cell_bbox
-                cell_vox_grids[c_i][c_j][c_k] = (cell_vox_origin, cell_vox_size)
+                cell_vox_grids[c_i][c_j].append(cell_vox_origin, cell_vox_size)
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
