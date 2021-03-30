@@ -271,7 +271,7 @@ def main():
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
-   for cell_idx, cell_vox_min, cell_vox_min in voxel_chunks(out_grid_size, args.cells_per_axis):
+    for cell_idx, cell_vox_min, cell_vox_max in voxel_chunks(out_grid_size, args.cells_per_axis):
 
         # Bounding box of the cell in world coordinates
         cell_vox_size = cell_vox_max - cell_vox_min
