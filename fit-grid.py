@@ -6,8 +6,7 @@ import torch
 from skimage.measure import marching_cubes
 
 from common import load_point_cloud, point_cloud_bounding_box, fit_model_to_pointcloud, eval_model_on_grid, \
-    voxel_chunks, points_in_bbox, \
-    scale_bounding_box_diameter
+    voxel_chunks, points_in_bbox, scale_bounding_box_diameter
 
 
 def main():
