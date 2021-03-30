@@ -221,6 +221,7 @@ def main():
     np.random.seed(seed)
 
     x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    print("x.shape", x.shape, n.shape)
     print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
     # if x.shape[0] > args.voxel_downsample_threshold:
@@ -253,30 +254,26 @@ def main():
                 # Bounding box of the cell in world coordinates
                 cell_bbox = cell_vox_size * voxel_size, cell_vox_origin * voxel_size
 
-                print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
-                print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
-                print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
-
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
-                print(f"    num points {mask_cell.sum()}")
-
                 if mask_cell.sum() <= 0:
                     continue
 
-                if c_i == 0 and c_j == 0:
-                    print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size}")
+                print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
+                print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
+                print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
+                print(f"    num points {mask_cell.sum()}")
 
                 model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
                 cell_vox_min, cell_vox_max = cell_vox_origin, cell_vox_origin + cell_vox_size
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
-                         cell_vox_min[1]:cell_vox_max[1],
-                         cell_vox_min[2]:cell_vox_max[2]] = \
+                cell_vox_min[1]:cell_vox_max[1],
+                cell_vox_min[2]:cell_vox_max[2]] = \
                     eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
                 out_mask[cell_vox_min[0]:cell_vox_max[0],
-                         cell_vox_min[1]:cell_vox_max[1],
-                         cell_vox_min[2]:cell_vox_max[2]] = True
+                cell_vox_min[1]:cell_vox_max[1],
+                cell_vox_min[2]:cell_vox_max[2]] = True
 
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
