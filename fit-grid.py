@@ -118,23 +118,28 @@ def fit_cell(x, n, cell_bbox, seed, args):
                       kernel_type=args.kernel, stop_thresh=args.cg_stop_thresh,
                       variance=args.outer_layer_variance,
                       verbose=args.verbose)
-    recon_bbox = affine_transform_bounding_box(cell_bbox, tx)
 
-    return model, recon_bbox
+    return model, tx
 
 
-def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
-    recon_bbox = [_.numpy() for _ in recon_bbox]
-    cell_voxel_size = cell_voxel_size.numpy()
-    xmin, xmax = recon_bbox[0], (recon_bbox[0] + recon_bbox[1])
+def eval_cell(model, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
+    cell_vox_min = cell_vox_min.numpy()
+    cell_vox_max = cell_vox_max.numpy()
+    cell_vox_size = cell_vox_max - cell_vox_min
 
-    xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_voxel_size[0] * 1j,
-                                                  xmin[1]:xmax[1]:cell_voxel_size[1] * 1j,
-                                                  xmin[2]:xmax[2]:cell_voxel_size[2] * 1j]], axis=-1)
+    xmin = (cell_vox_min + 0.5) * voxel_size  # [3]
+    xmax = (cell_vox_max - 0.5) * voxel_size  # [3]
+
+    xmin = affine_transform_point_cloud(xmin, tx)
+    xmax = affine_transform_point_cloud(xmax, tx)
+
+    xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_vox_size[0] * 1j,
+                                                  xmin[1]:xmax[1]:cell_vox_size[1] * 1j,
+                                                  xmin[2]:xmax[2]:cell_vox_size[2] * 1j]], axis=-1)
     xgrid = torch.from_numpy(xgrid).to(dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
 
-    ygrid = model.predict(xgrid).reshape(tuple(cell_voxel_size.astype(np.int))).detach().cpu()
+    ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
 
     return ygrid
 
@@ -290,9 +295,9 @@ def main():
         # print(cell_idx, cell_vox_min.numpy(), cell_vox_size.numpy())
 
         print(cell_idx, cell_vox_min, cell_vox_max)
-        model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
+        model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
-            eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
+            eval_cell(model_ijk, cell_vox_min, cell_vox_max, voxel_size, tx, dtype).to(out_grid.dtype)
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             True
 
