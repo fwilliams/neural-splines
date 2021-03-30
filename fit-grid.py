@@ -231,6 +231,7 @@ def main():
         if mask_cell.sum() <= 0:
             continue
 
+        print("Fitting", cell_idx)
         # Fit the model and evaluate it on the grid for this cell
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
         recon_ijk = eval_cell(model_ijk, scaled_bbox[0], cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
