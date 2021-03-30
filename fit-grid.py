@@ -138,6 +138,37 @@ def eval_cell(model, cell_voxel_size, recon_bbox, dtype):
     return ygrid
 
 
+def voxel_chunks(out_grid_size, cells_per_axis):
+    if np.isscalar(cells_per_axis):
+        cells_per_axis = torch.tensor([cells_per_axis] * len(out_grid_size)).to(torch.int32)
+
+    current_vox_min = torch.tensor([0.0, 0.0, 0.0]).to(torch.float64)
+    current_vox_max = torch.tensor([0.0, 0.0, 0.0]).to(torch.float64)
+
+    cell_size_float = out_grid_size.to(torch.float64) / cells_per_axis
+
+    for c_i in range(cells_per_axis[0]):
+        current_vox_min[0] = current_vox_max[0]
+        current_vox_max[0] = cell_size_float[0] + current_vox_max[0]
+        current_vox_min[1:] = 0
+        current_vox_max[1:] = 0
+
+        for c_j in range(cells_per_axis[1]):
+            current_vox_min[1] = current_vox_max[1]
+            current_vox_max[1] = cell_size_float[1] + current_vox_max[1]
+            current_vox_min[2:] = 0
+            current_vox_max[2:] = 0
+
+            for c_k in range(cells_per_axis[2]):
+                current_vox_min[2] = current_vox_max[2]
+                current_vox_max[2] = cell_size_float[2] + current_vox_max[2]
+
+                vox_min = torch.round(current_vox_min).to(torch.int32)
+                vox_max = torch.round(current_vox_max).to(torch.int32)
+
+                yield (c_i, c_j, c_k), vox_min, vox_max
+
+
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
@@ -240,65 +271,30 @@ def main():
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
-    cell_bboxes = []
-    cell_vox_grids = []
-    acc = torch.zeros(3)
-    current_vox_min = torch.tensor([0, 0, 0]).to(torch.int32)
-    current_vox_max = torch.tensor([0, 0, 0]).to(torch.int32)
-    cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
+   for cell_idx, cell_vox_min, cell_vox_min in voxel_chunks(out_grid_size, args.cells_per_axis):
 
-    for c_i in range(args.cells_per_axis):
-        cell_bboxes.append([])
-        cell_vox_grids.append([])
-        current_vox_min[0] = current_vox_max[0]
-        current_vox_max[0] = torch.round(cell_size_float[0] + current_vox_max[0]).to(current_vox_max)
-        current_vox_min[1:] = 0
-        current_vox_max[1:] = 0
+        # Bounding box of the cell in world coordinates
+        cell_vox_size = cell_vox_max - cell_vox_min
+        cell_bbox = scaled_bbox[0] + cell_vox_min * voxel_size, cell_vox_size * voxel_size
 
-        for c_j in range(args.cells_per_axis):
-            cell_bboxes[c_i].append([])
-            cell_vox_grids[c_i].append([])
-            current_vox_min[1] = current_vox_max[1]
-            current_vox_max[1] = torch.round(cell_size_float[1] + current_vox_max[1]).to(current_vox_max)
-            current_vox_min[2:] = 0
-            current_vox_max[2:] = 0
+        print(cell_idx, cell_vox_min.numpy(), cell_vox_size.numpy())
 
-            for c_k in range(args.cells_per_axis):
-                current_vox_min[2] = current_vox_max[2]
-                current_vox_max[2] = torch.round(cell_size_float[2] + current_vox_max[2]).to(current_vox_max)
+        # If there are no points in this region, then skip it
+        mask_cell = points_in_bbox(x, cell_bbox)
+        if mask_cell.sum() <= 0:
+            continue
 
-                cell_vox_origin = current_vox_min
-                cell_vox_size = current_vox_max - current_vox_min
-                print(c_i, c_j, c_k, cell_vox_origin.numpy(), cell_vox_size.numpy(), current_vox_min.numpy(), current_vox_max.numpy())
+        # print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
+        # print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
+        # print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
+        # print(f"    num points {mask_cell.sum()}")
 
-                # Bounding box of the cell in world coordinates
-                cell_bbox = scaled_bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
+        model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
+        out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
+            eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
+        out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
+            True
 
-                cell_bboxes[c_i][c_j].append(cell_bbox)
-                cell_vox_grids[c_i][c_j].append((cell_vox_origin.clone(), cell_vox_size.clone()))
-
-                # If there are no points in this region, then skip it
-                mask_cell = points_in_bbox(x, cell_bbox)
-                if mask_cell.sum() <= 0:
-                    continue
-
-                # print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
-                # print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
-                # print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
-                # print(f"    num points {mask_cell.sum()}")
-
-                model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
-
-                cell_vox_min, cell_vox_max = cell_vox_origin, cell_vox_origin + cell_vox_size
-                out_grid[cell_vox_min[0]:cell_vox_max[0],
-                cell_vox_min[1]:cell_vox_max[1],
-                cell_vox_min[2]:cell_vox_max[2]] = \
-                    eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
-                out_mask[cell_vox_min[0]:cell_vox_max[0],
-                cell_vox_min[1]:cell_vox_max[1],
-                cell_vox_min[2]:cell_vox_max[2]] = True
-
-    torch.save((cell_bboxes, cell_vox_grids, x), "debug.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
     pcu.write_ply(f"recon.ply",
