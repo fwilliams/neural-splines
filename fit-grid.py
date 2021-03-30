@@ -251,16 +251,17 @@ def main():
             for c_k in range(args.cells_per_axis):
                 cell_idx = torch.tensor((c_i, c_j, c_k)).to(torch.int32)
 
-                # Size of the cell in voxels (pad the last cell with an extra voxel)
                 cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
                 cell_vox_size = torch.floor(cell_size_float)
                 add_one = torch.tensor([1 if c.item() == args.cells_per_axis - 1 else 0 for c in cell_idx])
-                cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
 
                 if add_one.sum() > 0:
                     print("  ", c_i, c_j, c_k, add_one, add_one * torch.ceil(cell_size_float - cell_vox_size))
                     print("    ", cell_size_float, cell_vox_size)
                     print("    ", cell_size_float - cell_vox_size.to(cell_size_float))
+
+                # Size of the cell in voxels (pad the last cell with an extra voxel)
+                cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
                 cell_vox_origin = (cell_idx * cell_vox_size).to(torch.int32)
 
                 # Bounding box of the cell in world coordinates
