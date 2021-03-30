@@ -128,20 +128,23 @@ def scale_bounding_box_diameter(bbox, scale):
     return scaled_bb_min, scaled_bb_size
 
 
-def generate_nystrom_samples(x, num_samples, sampling_method, seed):
+def generate_nystrom_samples(x, num_samples, sampling_method, seed, print_message=True):
     if sampling_method == 'random':
-        print("Using Nyström samples chosen uniformly at random from the input.")
+        if print_message:
+            print("Using Nyström samples chosen uniformly at random from the input.")
         center_selector = 'uniform'
         x_ny = None
         ny_count = min(num_samples, x.shape[0])
     elif sampling_method == 'blue-noise':
-        print("Generating blue noise Nyström samples.")
+        if print_message:
+            print("Generating blue noise Nyström samples.")
         ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=seed)
         x_ny = x[ny_idx]
         ny_count = x_ny.shape[0]
         center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
     elif sampling_method == 'k-means':
-        print("Generating k-means Nyström samples.")
+        if print_message:
+            print("Generating k-means Nyström samples.")
         _, x_ny = kmeans(x.contiguous(), num_samples)
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
