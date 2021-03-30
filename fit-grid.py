@@ -281,6 +281,7 @@ def main():
     print("full grid size is", out_grid_size)
     print("bbox min is", scaled_bbox[0])
     print("bbox max is", scaled_bbox[0] + scaled_bbox[1])
+    print("x range is", x.min(0)[0], x.max(0)[0])
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
