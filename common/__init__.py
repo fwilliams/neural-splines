@@ -157,7 +157,7 @@ def generate_nystrom_samples(x, num_samples, sampling_method, seed, print_messag
 
 
 def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="neural-spline",
-              maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False, falkon_opts=None):
+              maxiters=20, stop_thresh=1e-7, variance=1.0, verbose=False, falkon_opts=None, print_message=True):
 
     if falkon_opts is None:
         falkon_opts = falkon.FalkonOptions()
@@ -173,12 +173,16 @@ def fit_model(x, y, penalty, num_ny, center_selector, kernel_type="neural-spline
         falkon_opts.debug = verbose
 
     if kernel_type == "neural-spline":
-        print("Using Neural Spline Kernel")
+        if print_message:
+            print("Using Neural Spline Kernel")
         kernel = NeuralSplineKernel(variance=variance, opt=falkon_opts)
     elif kernel_type == "spherical-laplace":
-        print("Using Spherical Laplace Kernel")
+        if print_message:
+            print("Using Spherical Laplace Kernel")
         kernel = LaplaceKernelSphere(alpha=-0.5, gamma=0.5, opt=falkon_opts)
     elif kernel_type == "linear-angle":
+        if print_message:
+            print("Using Linear Angle Kernel")
         kernel = LinearAngleKernel(opt=falkon_opts)
     else:
         raise ValueError(f"Invalid kernel_type {kernel_type}, expected one of 'neural-spline' or 'spherical-laplace'")
