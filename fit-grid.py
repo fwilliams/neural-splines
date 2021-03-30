@@ -259,10 +259,13 @@ def main():
                     print("  ", c_i, c_j, c_k, add_one, add_one * torch.ceil(cell_size_float - cell_vox_size))
                     print("    ", cell_size_float, cell_vox_size)
                     print("    ", cell_size_float - cell_vox_size.to(cell_size_float))
+                    print("    ", torch.ceil(cell_size_float - cell_vox_size))
+                    print("    ", add_one * torch.ceil(cell_size_float - cell_vox_size))
+                    print("    ", (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32))
 
                 # Size of the cell in voxels (pad the last cell with an extra voxel)
-                cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
                 cell_vox_origin = (cell_idx * cell_vox_size).to(torch.int32)
+                cell_vox_size = (cell_vox_size + add_one * torch.ceil(cell_size_float - cell_vox_size)).to(torch.int32)
 
                 # Bounding box of the cell in world coordinates
                 cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
