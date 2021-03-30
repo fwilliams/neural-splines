@@ -202,19 +202,19 @@ def main():
 
     x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
 
-    # Downsample points to grid resolution if there are enough points
-    if x.shape[0] > args.voxel_downsample_threshold:
-        print("Downsampling input point cloud to voxel resolution")
-        min_bound, size = scale_bounding_box_diameter(bbox, args.scale)
-        max_bound = min_bound + size
-        num_voxels = torch.round(args.grid_size * size / torch.max(size)).numpy()
-        x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / num_voxels, x.numpy(), n.numpy(),
-                                                        min_bound=min_bound, max_bound=max_bound)
-        x, n = torch.from_numpy(x), torch.from_numpy(n)
-
     scaled_bbox = scale_bounding_box_diameter(bbox, args.scale)
     out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
     voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
+
+    # Downsample points to grid resolution if there are enough points
+    if x.shape[0] > args.voxel_downsample_threshold:
+        print("Downsampling input point cloud to voxel resolution")
+        x, n, _ = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
+                                                        min_bound=scaled_bbox[0],
+                                                        max_bound=scaled_bbox[0] + scaled_bbox[1])
+        x, n = torch.from_numpy(x), torch.from_numpy(n)
+
+    # Voxel grid to store the output
     out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
     out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
 
