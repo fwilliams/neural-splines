@@ -164,7 +164,7 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
         cell_vox_max = voxel_grid_size
 
     if print_message:
-        print(f"Evaluating model on grid of size {(_.item() for _ in (cell_vox_max - cell_vox_min))}.")
+        print(f"Evaluating model on grid of size {[_.item() for _ in (cell_vox_max - cell_vox_min)]}.")
     eval_start_time = time.time()
 
     xmin = bbox_origin + (cell_vox_min + 0.5) * voxel_size
