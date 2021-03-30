@@ -250,14 +250,17 @@ def main():
     for c_i in range(args.cells_per_axis):
         cell_bboxes.append([])
         cell_vox_grids.append([])
+        current_vox_min[0] = current_vox_max[0]
         current_vox_max[0] = torch.round(cell_size_float[0] + current_vox_max[0]).to(current_vox_max)
 
         for c_j in range(args.cells_per_axis):
             cell_bboxes[c_i].append([])
             cell_vox_grids[c_i].append([])
+            current_vox_min[2] = current_vox_max[2]
             current_vox_max[1] = torch.round(cell_size_float[1] + current_vox_max[1]).to(current_vox_max)
 
             for c_k in range(args.cells_per_axis):
+                current_vox_min[2] = current_vox_max[2]
                 current_vox_max[2] = torch.round(cell_size_float[2] + current_vox_max[2]).to(current_vox_max)
 
                 cell_vox_origin = current_vox_min
@@ -291,9 +294,6 @@ def main():
                 cell_vox_min[1]:cell_vox_max[1],
                 cell_vox_min[2]:cell_vox_max[2]] = True
 
-                current_vox_min[2] = current_vox_max[2]
-            current_vox_min[1] = current_vox_max[1]
-        current_vox_min[0] = current_vox_max[0]
     torch.save((cell_bboxes, cell_vox_grids, x), "debug.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
