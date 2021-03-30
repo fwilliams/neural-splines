@@ -289,6 +289,7 @@ def main():
         # print(f"    num points {mask_cell.sum()}")
         # print(cell_idx, cell_vox_min.numpy(), cell_vox_size.numpy())
 
+        print(cell_idx, cell_vox_min, cell_vox_max)
         model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
