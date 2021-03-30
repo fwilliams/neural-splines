@@ -197,9 +197,13 @@ def main():
     argparser.add_argument("cells_per_axis", type=int,
                            help="Number of cells per axis to split the input along")
 
-    argparser.add_argument("--overlap", type=float, default=0.1,
+    argparser.add_argument("--overlap", type=float, default=0.25,
                            help="By how much should each grid cell overlap as a fraction of the bounding "
-                                "box diagonal. Default is 0.1")
+                                "box diagonal. Default is 0.25")
+
+    argparser.add_argument("--scale", type=float, default=1.1,
+                           help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
+                                " the diameter of the bounding box of the input points. Defaults is 1.1.")
 
     argparser.add_argument("--regularization", type=float, default=1e-7,
                            help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
