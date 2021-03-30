@@ -126,8 +126,8 @@ def eval_cell(model, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
     xmin = (cell_vox_min + 0.5) * voxel_size  # [3]
     xmax = (cell_vox_max - 0.5) * voxel_size  # [3]
 
-    xmin = affine_transform_point_cloud(xmin, tx)
-    xmax = affine_transform_point_cloud(xmax, tx)
+    xmin = affine_transform_point_cloud(xmin.unsqueeze(0), tx).squeeze()
+    xmax = affine_transform_point_cloud(xmax.unsqueeze(0), tx).squeeze()
 
     xmin, xmax = xmin.numpy(), xmax.numpy()
     cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
@@ -287,15 +287,10 @@ def main():
         if mask_cell.sum() <= 0:
             continue
 
-        # print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size} and origin {cell_vox_origin}")
-        # print(f"    bbox size {cell_bbox[1]}, bbox origin: {cell_bbox[0]}")
-        # print(f"    x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
-        # print(f"    num points {mask_cell.sum()}")
-        # print(cell_idx, cell_vox_min.numpy(), cell_vox_size.numpy())
-
         print(cell_idx, cell_vox_min, cell_vox_max)
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
         recon_ijk = eval_cell(model_ijk, cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
+
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             recon_ijk
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
