@@ -261,7 +261,7 @@ def main():
                 # Bounding box of the cell in world coordinates
                 cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
 
-                cell_bboxes[c_i][c_j][c_k] = cell_bbox
+                cell_bboxes[c_i][c_j][].append(cell_bbox)
                 cell_vox_grids[c_i][c_j].append(cell_vox_origin, cell_vox_size)
 
                 # If there are no points in this region, then skip it
