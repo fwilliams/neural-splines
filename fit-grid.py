@@ -262,7 +262,7 @@ def main():
                 cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
 
                 cell_bboxes[c_i][c_j].append(cell_bbox)
-                cell_vox_grids[c_i][c_j].append(cell_vox_origin, cell_vox_size)
+                cell_vox_grids[c_i][c_j].append((cell_vox_origin, cell_vox_size))
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
