@@ -109,7 +109,7 @@ def fit_cell(x, n, cell_bbox, seed, args):
     tx = normalizing_transform(x)
     # tx = (-(padded_bbox[0] + padded_bbox[1] * 0.5), 1.0 / torch.max(padded_bbox[1]))
     x = affine_transform_point_cloud(x, tx)
-    print(x.min(0)[0], x.max(0)[0])
+    print("X-range cell", x.min(0)[0], x.max(0)[0])
     x_ny, center_selector, ny_count = generate_nystrom_samples(x, args.num_nystrom_samples, args.nystrom_mode, seed)
 
     x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
@@ -129,7 +129,8 @@ def eval_cell(model, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
 
     xmin = affine_transform_point_cloud(xmin.unsqueeze(0), tx).squeeze()
     xmax = affine_transform_point_cloud(xmax.unsqueeze(0), tx).squeeze()
-    print(xmin, xmax)
+    print("X-range recon", xmin, xmax)
+    print()
     xmin, xmax = xmin.numpy(), xmax.numpy()
     cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
 
