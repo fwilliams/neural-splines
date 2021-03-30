@@ -264,7 +264,7 @@ def main():
 
     # Downsample points to grid resolution if there are enough points
     if x.shape[0] > args.voxel_downsample_threshold:
-        print("Quantizing points...")
+        print("Downsampling input point cloud to voxel resolution")
         min_bound, size = scale_bounding_box_diameter(bbox, args.scale)
         max_bound = min_bound + size
         num_voxels = torch.round(args.grid_size * size / torch.max(size)).numpy()
