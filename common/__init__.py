@@ -179,7 +179,8 @@ def point_cloud_bounding_box(x, scale=1.0):
     :param scale: A scale factor by which to scale the bounding box diagonal
     :return: The (possibly scaled) axis-aligned bounding box for a point cloud represented as a pair (origin, size)
     """
-    bb_min, bb_size = torch.from_numpy(x.min(0)[0]), torch.from_numpy(x.max(0)[0] - x.min(0)[0])
+    bb_min = x.min(0)[0]
+    bb_size = x.max(0)[0] - bb_min
     bb_diameter = torch.norm(bb_size)
     bb_unit_dir = bb_size / bb_diameter
     scaled_bb_size = bb_size * scale
