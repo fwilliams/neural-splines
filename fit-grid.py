@@ -125,9 +125,9 @@ def fit_cell(x, n, cell_bbox, seed, args):
     return model, tx
 
 
-def eval_cell(model, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
-    xmin = (cell_vox_min + 0.5) * voxel_size  # [3]
-    xmax = (cell_vox_max - 0.5) * voxel_size  # [3]
+def eval_cell(model, origin, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
+    xmin = origin + (cell_vox_min + 0.5) * voxel_size  # [3]
+    xmax = origin + (cell_vox_max - 0.5) * voxel_size  # [3]
     print("XMINMAX", xmin, xmax)
     print("TX", tx)
     xmin = affine_transform_point_cloud(xmin.unsqueeze(0), tx).squeeze()
@@ -294,7 +294,7 @@ def main():
 
         print(cell_idx, cell_vox_min, cell_vox_max)
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
-        recon_ijk = eval_cell(model_ijk, cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
+        recon_ijk = eval_cell(model_ijk, scaled_bbox[0], cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
 
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             recon_ijk
