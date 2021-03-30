@@ -129,10 +129,7 @@ def voxel_chunks(grid_size, cells_per_axis):
                 yield (c_i, c_j, c_k), vox_min, vox_max
 
 
-def fit_cell(x, n, cell_bbox, seed, args):
-    padded_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
-    mask = points_in_bbox(x, padded_bbox)
-    x, n = x[mask], n[mask]
+def fit_cell(x, n, seed, args):
     x, y = make_triples(x, n, args.eps, homogeneous=False)
 
     tx = normalize_pointcloud_transform(x)

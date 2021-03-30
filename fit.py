@@ -8,31 +8,6 @@ from skimage.measure import marching_cubes
 from common import load_point_cloud, scale_bounding_box_diameter, fit_cell, eval_cell, point_cloud_bounding_box
 
 
-def reconstruct_on_voxel_grid(model, grid_width, scale, bbox_normalized, bbox_input, dtype=torch.float64):
-    scaled_bbn_min, scaled_bbn_size = scale_bounding_box_diameter(bbox_normalized, scale)
-    scaled_bbi_min, scaled_bbi_size = scale_bounding_box_diameter(bbox_input, scale)
-
-    plt_range_min, plt_range_max = scaled_bbn_min, scaled_bbn_min + scaled_bbn_size
-    grid_size = np.round(bbox_normalized[1] * grid_width).astype(np.int64)
-
-    print(f"Evaluating reconstructed function on grid of size {grid_size[0]}x{grid_size[1]}x{grid_size[2]}...")
-    xgrid = np.stack([_.ravel() for _ in np.mgrid[plt_range_min[0]:plt_range_max[0]:grid_size[0] * 1j,
-                                                  plt_range_min[1]:plt_range_max[1]:grid_size[1] * 1j,
-                                                  plt_range_min[2]:plt_range_max[2]:grid_size[2] * 1j]],
-                     axis=-1)
-    xgrid = torch.from_numpy(xgrid).to(dtype)
-    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
-
-    ygrid = model.predict(xgrid).reshape(grid_size[0], grid_size[1], grid_size[2])
-
-    size_per_voxel = scaled_bbi_size / (grid_size - 1.0)
-
-    v, f, n, vals = marching_cubes(ygrid.detach().cpu().numpy(), level=0.0, spacing=size_per_voxel)
-    v += scaled_bbi_min
-
-    return ygrid, (v.astype(np.float64), f.astype(np.int32), n.astype(np.float64), vals.astype(np.float64))
-
-
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
@@ -127,7 +102,7 @@ def main():
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    model, tx = fit_cell(x, n, scaled_bbox, seed, args)
+    model, tx = fit_cell(x, n, seed, args)
     recon = eval_cell(model, scaled_bbox, tx, out_grid_size)
     v, f, n, c = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
