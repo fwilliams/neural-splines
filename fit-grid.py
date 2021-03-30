@@ -234,42 +234,39 @@ def main():
 
     print("full grid size is", out_grid_size)
 
-    for cell_i in range(args.cells_per_axis):
-        for cell_j in range(args.cells_per_axis):
-            for cell_k in range(args.cells_per_axis):
-                cell_bb_size = scaled_bbox[1] / args.cells_per_axis
-                cell_bb_origin = scaled_bbox[0] + torch.tensor([cell_i, cell_j, cell_k]) * cell_bb_size
+    for c_i in range(args.cells_per_axis):
+        for c_j in range(args.cells_per_axis):
+            for c_k in range(args.cells_per_axis):
+                cell_idx = torch.tensor([(c_i, c_j, c_k)]).to(torch.int32)
 
-                # Normalized cell bounding box in [0, 1]^3
-                cell_bbmin_rel = (cell_bb_origin - scaled_bbox[0]) / scaled_bbox[1]
-                cell_bbmax_rel = (cell_bb_origin + cell_bb_size - scaled_bbox[0]) / scaled_bbox[1]
+                # Size of the cell in voxels (pad the last cell with an extra voxel)
+                cell_size_float = out_grid_size.to(torch.float64) / args.cells_per_axis
+                cell_vox_size = torch.floor(cell_size_float)
+                add_one = torch.tensor([1 if idx == args.cells_per_axis - 1 else 0 for idx in cell_idx])
+                cell_vox_size += add_one * torch.ceil(cell_size_float - cell_vox_size).to(torch.int32)
+                cell_vox_origin = cell_idx * cell_vox_size
 
-                # Min and max indices to write into voxel grid
-                cell_vox_min = torch.round(cell_bbmin_rel * out_grid_size).to(torch.int32)
-                cell_vox_max = torch.minimum(np.round(cell_bbmax_rel * out_grid_size).to(torch.int32) + 1,
-                                             out_grid_size)
-                cell_vox_size = cell_vox_max - cell_vox_min
-
-                # Quantized bounding box size for a cell
-                cell_bbox = cell_vox_min * voxel_size - scaled_bbox[0], cell_vox_size * voxel_size
+                # Bounding box of the cell in world coordinates
+                cell_bbox = cell_vox_size * voxel_size, cell_vox_origin * voxel_size
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
                 if mask_cell.sum() <= 0:
                     continue
 
-                if cell_i == 0 and cell_j == 0:
-                    print(f"Cell {cell_i}, {cell_j}, {cell_k} has size {cell_vox_size}")
+                if c_i == 0 and c_j == 0:
+                    print(f"Cell {c_i}, {c_j}, {c_k} has size {cell_vox_size}")
 
                 model_ijk, recon_bbox = fit_cell(x, n, cell_bbox, seed, args)
 
+                cell_vox_min, cell_vox_max = cell_vox_origin, cell_vox_origin + cell_vox_size
                 out_grid[cell_vox_min[0]:cell_vox_max[0],
-                cell_vox_min[1]:cell_vox_max[1],
-                cell_vox_min[2]:cell_vox_max[2]] = \
+                         cell_vox_min[1]:cell_vox_max[1],
+                         cell_vox_min[2]:cell_vox_max[2]] = \
                     eval_cell(model_ijk, cell_vox_size, recon_bbox, dtype).to(out_grid.dtype)
                 out_mask[cell_vox_min[0]:cell_vox_max[0],
-                cell_vox_min[1]:cell_vox_max[1],
-                cell_vox_min[2]:cell_vox_max[2]] = True
+                         cell_vox_min[1]:cell_vox_max[1],
+                         cell_vox_min[2]:cell_vox_max[2]] = True
 
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
