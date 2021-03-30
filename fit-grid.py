@@ -240,6 +240,8 @@ def main():
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
+    cell_bboxes = [[[]]]
+    cell_vox_grids = [[[]]]
     for c_i in range(args.cells_per_axis):
         for c_j in range(args.cells_per_axis):
             for c_k in range(args.cells_per_axis):
@@ -254,6 +256,9 @@ def main():
 
                 # Bounding box of the cell in world coordinates
                 cell_bbox = bbox[0] + cell_vox_origin * voxel_size, cell_vox_size * voxel_size
+
+                cell_bboxes[c_i][c_j][c_k] = cell_bbox
+                cell_vox_grids[c_i][c_j][c_k] = (cell_vox_origin, cell_vox_size)
 
                 # If there are no points in this region, then skip it
                 mask_cell = points_in_bbox(x, cell_bbox)
@@ -276,6 +281,7 @@ def main():
                 cell_vox_min[1]:cell_vox_max[1],
                 cell_vox_min[2]:cell_vox_max[2]] = True
 
+    torch.save((cell_bboxes, cell_vox_grids, x), "debug.pth")
     torch.save(out_grid, "out.grid.pth")
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
     pcu.write_ply(f"recon.ply",
