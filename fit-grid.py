@@ -240,7 +240,8 @@ def main():
             True
 
     torch.save(out_grid, "out.grid.pth")
-    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy())
+    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
+    v += scaled_bbox[0]
     pcu.write_ply(f"recon.ply",
                   v.astype(np.float32), f.astype(np.int32),
                   n.astype(np.float32), c.astype(np.float32))
