@@ -5,29 +5,7 @@ import point_cloud_utils as pcu
 import torch
 from skimage.measure import marching_cubes
 
-from common import load_point_cloud, point_cloud_bounding_box, fit_cell, affine_transform_pointcloud, voxel_chunks, \
-    points_in_bbox
-
-
-def eval_cell(model, origin, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
-    xmin = origin + (cell_vox_min + 0.5) * voxel_size  # [3]
-    xmax = origin + (cell_vox_max - 0.5) * voxel_size  # [3]
-
-    xmin = affine_transform_pointcloud(xmin.unsqueeze(0), tx).squeeze()
-    xmax = affine_transform_pointcloud(xmax.unsqueeze(0), tx).squeeze()
-
-    xmin, xmax = xmin.numpy(), xmax.numpy()
-    cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
-
-    xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_vox_size[0] * 1j,
-                                                  xmin[1]:xmax[1]:cell_vox_size[1] * 1j,
-                                                  xmin[2]:xmax[2]:cell_vox_size[2] * 1j]], axis=-1)
-    xgrid = torch.from_numpy(xgrid).to(dtype)
-    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(dtype)
-
-    ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
-
-    return ygrid
+from common import load_point_cloud, point_cloud_bounding_box, fit_cell, eval_cell, voxel_chunks, points_in_bbox
 
 
 def main():
@@ -150,7 +128,8 @@ def main():
         print("Fitting", cell_idx)
         # Fit the model and evaluate it on the grid for this cell
         model_ijk, tx = fit_cell(x, n, cell_bbox, seed, args)
-        recon_ijk = eval_cell(model_ijk, scaled_bbox[0], cell_vox_min, cell_vox_max, voxel_size, tx, dtype)
+        recon_ijk = eval_cell(model_ijk, scaled_bbox, tx, out_grid_size,
+                              cell_vox_min=cell_vox_min, cell_vox_max=cell_vox_max)
         out_grid[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \
             recon_ijk
         out_mask[cell_vox_min[0]:cell_vox_max[0], cell_vox_min[1]:cell_vox_max[1], cell_vox_min[2]:cell_vox_max[2]] = \

@@ -151,6 +151,36 @@ def fit_cell(x, n, cell_bbox, seed, args):
     return model, tx
 
 
+def eval_cell(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell_vox_max=None):
+    bbox_origin, bbox_size = bbox
+    voxel_size = bbox_size / voxel_grid_size  # size of a single voxel cell
+
+    if cell_vox_min is None:
+        cell_vox_min = torch.tensor([0, 0, 0], dtype=torch.int32)
+
+    if cell_vox_max is None:
+        cell_vox_max = voxel_grid_size
+
+    xmin = bbox_origin + (cell_vox_min + 0.5) * voxel_size
+    xmax = bbox_origin + (cell_vox_max - 0.5) * voxel_size
+
+    xmin = affine_transform_pointcloud(xmin.unsqueeze(0), tx).squeeze()
+    xmax = affine_transform_pointcloud(xmax.unsqueeze(0), tx).squeeze()
+
+    xmin, xmax = xmin.numpy(), xmax.numpy()
+    cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
+
+    xgrid = np.stack([_.ravel() for _ in np.mgrid[xmin[0]:xmax[0]:cell_vox_size[0] * 1j,
+                                                  xmin[1]:xmax[1]:cell_vox_size[1] * 1j,
+                                                  xmin[2]:xmax[2]:cell_vox_size[2] * 1j]], axis=-1)
+    xgrid = torch.from_numpy(xgrid).to(model.alpha_.dtype)
+    xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(model.alpha_.dtype)
+
+    ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
+
+    return ygrid
+
+
 def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     """
     Load a point cloud with normals, filtering out points whose normal has a magnitude below the given threshold.
