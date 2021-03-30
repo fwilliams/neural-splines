@@ -229,7 +229,8 @@ def main():
     print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
     scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
-    print(bbox, scaled_bbox)
+    print("bbox", bbox)
+    print("scaled_bbox", scaled_bbox)
     out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
     voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
     out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
