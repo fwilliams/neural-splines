@@ -75,7 +75,7 @@ def load_normalized_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.floa
 
 def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
-
+    print("V", v.min(0), v.max(0))
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
     # We use this mask to remove bad vertices
     mask = np.linalg.norm(n, axis=-1) > min_norm_normal
