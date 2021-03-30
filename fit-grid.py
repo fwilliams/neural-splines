@@ -223,9 +223,9 @@ def main():
     x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
     print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
-    if x.shape[0] > args.voxel_downsample_threshold:
-        x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
-        x, n = torch.from_numpy(x), torch.from_numpy(n)
+    # if x.shape[0] > args.voxel_downsample_threshold:
+    #     x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
+    #     x, n = torch.from_numpy(x), torch.from_numpy(n)
     print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
     scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
