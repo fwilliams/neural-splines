@@ -128,12 +128,10 @@ def fit_cell(x, n, cell_bbox, seed, args):
 def eval_cell(model, origin, cell_vox_min, cell_vox_max, voxel_size, tx, dtype):
     xmin = origin + (cell_vox_min + 0.5) * voxel_size  # [3]
     xmax = origin + (cell_vox_max - 0.5) * voxel_size  # [3]
-    print("XMINMAX", xmin, xmax)
-    print("TX", tx)
+
     xmin = affine_transform_point_cloud(xmin.unsqueeze(0), tx).squeeze()
     xmax = affine_transform_point_cloud(xmax.unsqueeze(0), tx).squeeze()
-    print("X-range recon", xmin, xmax)
-    print()
+
     xmin, xmax = xmin.numpy(), xmax.numpy()
     cell_vox_size = (cell_vox_max - cell_vox_min).numpy()
 
@@ -262,17 +260,17 @@ def main():
     np.random.seed(seed)
 
     x, n, bbox = load_point_cloud(args.input_point_cloud, dtype=dtype)
-    print("x.shape", x.shape, n.shape)
-    print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
 
-    # if x.shape[0] > args.voxel_downsample_threshold:
-    #     x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / args.grid_size, x.numpy(), n.numpy())
-    #     x, n = torch.from_numpy(x), torch.from_numpy(n)
-    print(f"x.min: {x.min(0)[0]}, x.max: {x.max(0)[0]}")
+    # Downsample points to grid resolution if there are enough points
+    if x.shape[0] > args.voxel_downsample_threshold:
+        min_bound, size = scale_bounding_box_diameter(bbox, args.scale)
+        max_bound = min_bound + size
+        num_voxels = torch.round(args.grid_size * size / torch.max(size)).numpy()
+        x, n, _ = pcu.downsample_point_cloud_voxel_grid(1.0 / num_voxels, x.numpy(), n.numpy(),
+                                                        min_bound=min_bound, max_bound=max_bound)
+        x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    scaled_bbox = scale_bounding_box_diameter(bbox, 1.0 + args.overlap)
-    print("bbox", bbox)
-    print("scaled_bbox", scaled_bbox)
+    scaled_bbox = scale_bounding_box_diameter(bbox, args.scale)
     out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
     voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
     out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
