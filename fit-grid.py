@@ -236,8 +236,9 @@ def main():
     voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
     out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
     out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
-
     print("full grid size is", out_grid_size)
+
+    print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
     for c_i in range(args.cells_per_axis):
         for c_j in range(args.cells_per_axis):
