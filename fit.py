@@ -5,7 +5,7 @@ import point_cloud_utils as pcu
 import torch
 from skimage.measure import marching_cubes
 
-from common import load_point_cloud, fit_model_to_pointcloud, eval_model_on_grid, point_cloud_bounding_box
+from neural_splines import load_point_cloud, fit_model_to_pointcloud, eval_model_on_grid, point_cloud_bounding_box
 
 
 def main():
