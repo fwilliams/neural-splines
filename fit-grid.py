@@ -1,4 +1,5 @@
 import argparse
+import tqdm
 
 import numpy as np
 import point_cloud_utils as pcu
@@ -115,6 +116,7 @@ def main():
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
     # Iterate over each grid cell
+    tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
     for cell_idx, cell_vmin, cell_vmax in voxel_chunks(out_grid_size, args.cells_per_axis):
 
         # Bounding box of the cell in world coordinates
@@ -124,6 +126,7 @@ def main():
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
         if mask_cell.sum() <= 0:
+            tqdm_bar.update(1)
             continue
 
         print("Fitting", cell_idx)
@@ -139,6 +142,7 @@ def main():
                                         cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
+        tqdm_bar.update(1)
 
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())

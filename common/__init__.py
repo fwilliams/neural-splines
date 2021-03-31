@@ -54,6 +54,7 @@ def _run_falkon_fit(x, y, penalty, num_ny, center_selector, kernel_type="neural-
 
         falkon_opts.cg_tolerance = stop_thresh
         falkon_opts.debug = verbose
+        falkon_opts.cg_print_when_done = print_message
 
     if kernel_type == "neural-spline":
         if print_message:
