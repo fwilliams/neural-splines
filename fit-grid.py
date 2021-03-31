@@ -39,12 +39,12 @@ def main():
 
     argparser.add_argument("--regularization", type=float, default=1e-7,
                            help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
-    argparser.add_argument("--nystrom-mode", type=str, default="k-means",
+    argparser.add_argument("--nystrom-mode", type=str, default="blue-noise",
                            help="How to generate nystrom samples. Default is 'k-means'. Must be one of "
                                 "(1) 'random': choose Nyström samples at random from the input, "
                                 "(2) 'blue-noise': downsample the input with blue noise to get Nyström samples, or "
                                 "(3) 'k-means': use k-means clustering to generate Nyström samples. "
-                                "Default is 'k-means'")
+                                "Default is 'blue-noise'")
     argparser.add_argument("--voxel-downsample-threshold", type=int, default=150_000,
                            help="If the number of input points is greater than this value, downsample it by "
                                 "averaging points and normals within voxels on a grid. The size of the voxel grid is "
@@ -139,8 +139,7 @@ def main():
                                                  num_ny=args.num_nystrom_samples, eps=args.eps,
                                                  kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
                                                  cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
-                                                 outer_layer_variance=args.outer_layer_variance, seed=seed,
-                                                 verbosity_level=7)
+                                                 outer_layer_variance=args.outer_layer_variance, verbosity_level=7)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
                                         cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon

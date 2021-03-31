@@ -13,7 +13,7 @@ _VERBOSITY_LEVEL_INFO = 1
 _VERBOSITY_LEVEL_SILENT = 5
 
 
-def _generate_nystrom_samples(x, num_samples, sampling_method, seed, verbosity_level=1):
+def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1):
     if x.shape[1] != 3:
         raise ValueError(f"Invalid shape for x, must be [N, 3] but got {x.shape}")
     if sampling_method == 'random':
@@ -23,9 +23,10 @@ def _generate_nystrom_samples(x, num_samples, sampling_method, seed, verbosity_l
         x_ny = None
         ny_count = min(num_samples, x.shape[0])
     elif sampling_method == 'blue-noise':
+        blue_noise_seed = np.random.randint(2 ** 31 - 1)
         if verbosity_level <= _VERBOSITY_LEVEL_INFO:
             print("Generating blue noise Nyström samples.")
-        ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=seed)
+        ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=blue_noise_seed)
         x_ny = x[ny_idx]
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
@@ -116,7 +117,7 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
                             reg=1e-7, ny_mode='blue-noise',
                             cg_stop_thresh=1e-5, cg_max_iters=20,
                             outer_layer_variance=1.0,
-                            seed=0, verbosity_level=1, custom_falkon_opts=None):
+                            verbosity_level=1, custom_falkon_opts=None):
     """
     Fit a kernel to the point cloud with points x and normals n.
     :param x: A tensor of 3D points with shape [N, 3]
@@ -130,7 +131,6 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
     :param cg_stop_thresh: Stop threshold for the conjugate gradient solver
     :param cg_max_iters: Maximum number of conjugate gradient iterations
     :param outer_layer_variance: Variance o
-    :param seed: If greater than 0, use this random seed to generate Nystrom samples.
     :param verbosity_level: How much should this function spam your terminal. 0 = debug, 1 = info, >5 = silent
     :param custom_falkon_opts: Object of type falkon.FalkonOptions object used to override the default solver settings
     :return: A pair (model, tx) where model is a fitted neural spline model class (with the same API as scikit-learn)
@@ -138,22 +138,11 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
              You *must* apply this transformation to points before evaluating the model.
              This transformation is represented as a tuple (t, s) where t is a translation and s is scale.
     """
-
-    random_state = None
-    if seed > 0:
-        random_state = np.random.get_state(), torch.random.get_rng_state()
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-
-    # Seed for blue noise nystrom samples
-    blue_noise_seed = np.random.randint(2 ** 31 - 1)
-
     x, y = triple_points_along_normals(x, n, eps, homogeneous=False)
 
     tx = normalize_pointcloud_transform(x)
     x = affine_transform_pointcloud(x, tx)
-    x_ny, center_selector, ny_count = _generate_nystrom_samples(x, num_ny, ny_mode, blue_noise_seed,
-                                                                verbosity_level=verbosity_level)
+    x_ny, center_selector, ny_count = _generate_nystrom_samples(x, num_ny, ny_mode, verbosity_level=verbosity_level)
 
     x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
@@ -161,10 +150,6 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
                             maxiters=cg_max_iters, stop_thresh=cg_stop_thresh,
                             kernel_type=kernel, variance=outer_layer_variance,
                             verbosity_level=verbosity_level, falkon_opts=custom_falkon_opts)
-
-    if random_state is not None:
-        np.random.set_state(random_state[0])
-        torch.random.set_rng_state(random_state[1])
 
     return model, tx
 
