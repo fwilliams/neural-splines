@@ -12,12 +12,6 @@ _VERBOSITY_LEVEL_DEBUG = 0
 _VERBOSITY_LEVEL_INFO = 1
 _VERBOSITY_LEVEL_SILENT = 5
 
-# On new installations of KeOps, the first time we compile a kernel fails
-try:
-    kmeans(torch.rand([3, 3]), 2)
-except ModuleNotFoundError:
-    pass
-
 
 def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1):
     if x.shape[1] != 3:
