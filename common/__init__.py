@@ -1,4 +1,5 @@
 import time
+import warnings
 
 import falkon
 import point_cloud_utils as pcu
@@ -76,7 +77,13 @@ def _run_falkon_fit(x, y, penalty, num_ny, center_selector, kernel_type="neural-
     model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=falkon_opts, maxiter=maxiters,
                           center_selection=center_selector)
 
-    model.fit(x, y)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Input 'Y' is F-contiguous; to ensure KeOps compatibility, "
+                                                  "C-contiguous inputs are necessary. The data will be copied "
+                                                  "to change its order. To avoid this unnecessary copy, either "
+                                                  "disable KeOps (passing `keops_active='no'`) or make the input "
+                                                  "tensors C-contiguous.")
+        model.fit(x, y)
     if print_message:
         print(f"Fit model in {time.time() - fit_start_time} seconds")
     return model
