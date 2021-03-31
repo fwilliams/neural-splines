@@ -119,6 +119,7 @@ def main():
     tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
     for cell_idx, cell_vmin, cell_vmax in voxel_chunks(out_grid_size, args.cells_per_axis):
 
+        tqdm_bar.set_postfix({"Cell ID": str([c.item() for c in cell_idx])})
         # Bounding box of the cell in world coordinates
         cell_vox_size = cell_vmax - cell_vmin
         cell_bbox = scaled_bbox[0] + cell_vmin * voxel_size, cell_vox_size * voxel_size
@@ -128,8 +129,6 @@ def main():
         if mask_cell.sum() <= 0:
             tqdm_bar.update(1)
             continue
-
-        print("Fitting", cell_idx)
 
         # Pad the cell slightly so boundaries agree
         padded_cell_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
