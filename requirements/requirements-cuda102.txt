@@ -1,0 +1,8 @@
+torch
+scikit-image
+numpy
+scipy
+cupy-cuda102
+git+https://github.com/fwilliams/point-cloud-utils.git@neural-splines
+git+https://github.com/fwilliams/falkon.git@kml
+git+https://github.com/fwilliams/keops.git@falkon

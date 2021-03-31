@@ -1,0 +1,17 @@
+name: neural-splines
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - pip
+  - pytorch
+  - torchvision
+  - cudatoolkit
+  - scikit-image
+  - numpy
+  - scipy
+  - cupy
+  - pip:
+    - git+https://github.com/fwilliams/point-cloud-utils.git@neural-splines
+    - git+https://github.com/fwilliams/falkon.git@kml
+    - git+https://github.com/fwilliams/keops.git@falkon
