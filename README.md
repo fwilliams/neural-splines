@@ -12,21 +12,21 @@ since Neural Splines stores an MxM preconditioner matrix in CPU memory (where M 
 Neural splines has several dependencies which must be installed before it can be used. Some of these dependencies must be built and take time to install. 
 There are three ways to install dependencies:
 
-#### With `conda`
+#### Installing Dependencies with `conda`
 Simply run
 ```
 conda env create -f environment.yml
 ```
 and then go grab a coffee ☕. When you get back, you will have a conda environment called `neural-splines` with the right dependencies installed.
 
-#### With `pip`
+#### Installing Dependencies with `pip`
 We include several `requirement-*.txt` files in the `requirements` directory depending on your version of cuda. Choose the right file for your installation then run
 ```
 pip install -r requirements/requirements-cuda<VERSION>.txt
 ```
 and then go grab a coffee ☕.
 
-#### Manually (not recommended)
+#### Installing Dependencies Manually (Not Recommended)
 You will need to install the following dependencies manually to use this repository:
 * [PyTorch](https://pytorch.org/)
 * [scikit-image](https://scikit-image.org/)
