@@ -119,7 +119,7 @@ def main():
     tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
     for cell_idx, cell_vmin, cell_vmax in voxel_chunks(out_grid_size, args.cells_per_axis):
 
-        tqdm_bar.set_postfix({"Cell ID": str([c for c in cell_idx])})
+        tqdm_bar.set_postfix({"Cell ID": str(cell_idx)})
         # Bounding box of the cell in world coordinates
         cell_vox_size = cell_vmax - cell_vmin
         cell_bbox = scaled_bbox[0] + cell_vmin * voxel_size, cell_vox_size * voxel_size
