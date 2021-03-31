@@ -1,5 +1,5 @@
 # Neural Splines: Fitting 3D Surfaces with Inifinitely-Wide Neural Networks
-![Neural Splines Teaser](https://github.com/fwilliams/neural-splines/blob/master/teaser.png)
+![Neural Splines Teaser](https://github.com/fwilliams/neural-splines/blob/master/imgs/teaser.png)
 This repository contains the official implementation of the CVPR 2021 (Oral) paper [Neural Splines: Fitting 3D Surfaces with Infinitely-Wide Neural Networks](https://arxiv.org/abs/2006.13782).
 
 ## Table of Contents
@@ -50,6 +50,21 @@ You will also need to build the following dependencies from source. The easiest 
 * [FALKON](https://github.com/fwilliams/falkon/tree/kml): `pip install git+https://github.com/fwilliams/falkon.git@kml`
 * [KeOps](https://github.com/fwilliams/keops/tree/falkon)`pip install git+https://github.com/fwilliams/keops.git@falkon`
 
+## Testing Your Installation
+⚠️ **WARNING** ⚠️ Due to a bug in [KeOps](https://www.kernel-operations.io/keops/index.html), the first time you use any code in this repository will throw a `ModuleNotFoundError`. All subsequent invocations of Neural Splines should work.
+
+1. Download and unzip the [example point clouds here](http://storage.googleapis.com/local-implicit-grids/demo_data.zip)
+2. Unzip the file, in the directory of this repository, which should produe a directory named `demo_data`
+3. Run `python fit.py demo_data/bunny.ply 0.005 10_000 128` On the first run this will fail (see above, just rerun it). On the second run it will compile some kernels and then produce a file called `recon.ply` which should be a reconstructed Stanford Bunny. The image below shows the input points and reconstruction for the bunny,
+5. Run `python fit-grid.py demo_data/living_room_33_500_per_m2.ply 0.005 10_000 512 8` which will produce another `recon.ply` mesh, this time of a full room as shown below.
+<p align="center">
+    <span>
+        <img src="https://github.com/fwilliams/neural-splines/blob/master/imgs/bunny.png" alt="A reconstructed Stanford Bunny" width="33%">
+        <img src="https://github.com/fwilliams/neural-splines/blob/master/imgs/room.png" alt="A reconstruced living room" width="33%">
+    </span>
+</p>
+
+
 ## Using Neural Splines from the Command Line
 There are two scripts in this repository to fit surfaces from the command line:
 * `fit.py` fits an input point cloud using a single Neural Spline. This method is good for smaller inputs without too much geometric complexity.
@@ -76,7 +91,7 @@ where
 
 #### Reconstructing very large point clouds with `fit-grid.py`
 
-`fit-grd.py` fits an input point cloud in chunks using a different Neural Spline per chunk. This approach works well when the input point cloud is large or has a lot of geometric complexity. `fit-grid.py` takes the following arguments
+`fit-grid.py` fits an input point cloud in chunks using a different Neural Spline per chunk. This approach works well when the input point cloud is large or has a lot of geometric complexity. `fit-grid.py` takes the following arguments
 ```
 usage: fit-grid.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS> --overlap <OVERLAP>
 ```
