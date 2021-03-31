@@ -4,8 +4,8 @@ This repository contains the official implementation of the CVPR 2021 (Oral) pap
 
 ## System Requirements
 Neural Splines uses [FALKON](https://arxiv.org/abs/1705.10958), a state-of-the-art kernel ridge regression solver to fit 
-surfaces on one or more GPUs. We thus require at least one GPU to run Neural Splines. 
-We also recommend running this code on a machine with a lot of memory if you want to reconstruct large point clouds 
+surfaces on one or more GPUs. We thus require at least one GPU to run Neural Splines. We additionally require a working version of the CUDA compiler `nvcc`.
+We recommend running this code on a machine with a lot of memory if you want to reconstruct large point clouds 
 since Neural Splines stores an MxM preconditioner matrix in CPU memory (where M is the number of Nystrom samples). 
 
 ## Installing Dependencies
