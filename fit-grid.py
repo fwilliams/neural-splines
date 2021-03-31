@@ -39,12 +39,12 @@ def main():
 
     argparser.add_argument("--regularization", type=float, default=1e-7,
                            help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
-    argparser.add_argument("--nystrom-mode", type=str, default="blue-noise",
+    argparser.add_argument("--nystrom-mode", type=str, default="random",
                            help="How to generate nystrom samples. Default is 'k-means'. Must be one of "
                                 "(1) 'random': choose Nyström samples at random from the input, "
                                 "(2) 'blue-noise': downsample the input with blue noise to get Nyström samples, or "
                                 "(3) 'k-means': use k-means clustering to generate Nyström samples. "
-                                "Default is 'blue-noise'")
+                                "Default is 'random'")
     argparser.add_argument("--voxel-downsample-threshold", type=int, default=150_000,
                            help="If the number of input points is greater than this value, downsample it by "
                                 "averaging points and normals within voxels on a grid. The size of the voxel grid is "
