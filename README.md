@@ -9,7 +9,33 @@ We also recommend running this code on a machine with a lot of memory if you wan
 since Neural Splines stores an MxM preconditioner matrix in CPU memory (where M is the number of Nystrom samples). 
 
 ## Installing Dependencies
-Neural splines has several dependencies which must be installed before it can be used.
+Neural splines has several dependencies which must be installed before it can be used. Some of these dependencies must be built and take time to install. 
+There are three ways to install dependencies:
+
+#### With `conda`
+Simply run
+```
+conda env create -f environment.yml
+```
+and then go grab a coffee ☕. When you get back, you will have a conda environment called `neural-splines` with the right dependencies installed.
+
+#### With `pip`
+We include several `requirement-*.txt` files in the `requirements` directory depending on your version of cuda. Choose the right file for your installation then run
+```
+pip install -r requirements/requirements-cuda<VERSION>.txt
+```
+and then go grab a coffee ☕.
+
+#### Manually (not recommended)
+You will need to install the following dependencies manually to use this repository:
+* [PyTorch](https://pytorch.org/)
+* [scikit-image](https://scikit-image.org/)
+* [numpy](https://numpy.org/)
+
+You will also need to build the following dependencies from source. The easiest way to do this is with `pip` (see commands below), but you can also clone the linked repositories and run `setup.py install`:
+* [point-cloud-utils](https://github.com/fwilliams/point-cloud-utils/tree/neural-splines): `pip install git+https://github.com/fwilliams/point-cloud-utils.git@neural-splines`
+* [FALKON](https://github.com/fwilliams/falkon/tree/kml): `pip install git+https://github.com/fwilliams/falkon.git@kml`
+* [KeOps](https://github.com/fwilliams/keops/tree/falkon)`pip install git+https://github.com/fwilliams/keops.git@falkon`
 
 ## Usage Instructuctions
 There are two scripts in this repository to fit surfaces:
