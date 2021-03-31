@@ -45,8 +45,8 @@ def main():
                                 "NOTE: This can massively speed up reconstruction for very large point clouds and "
                                 "generally won't throw away any details.")
     argparser.add_argument("--kernel", type=str, default="neural-spline",
-                           help="Which kernel to use. Must be one of 'neural-spline', 'spherical-laplace',"
-                                " or 'linear-angle'. Default is 'neural-spline'."
+                           help="Which kernel to use. Must be one of 'neural-spline', 'spherical-laplace', or "
+                                "'linear-angle'. Default is 'neural-spline'."
                                 "NOTE: The spherical laplace is a good approximation to the neural tangent kernel"
                                 "(see https://arxiv.org/pdf/2007.01580.pdf for details)")
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
@@ -102,7 +102,10 @@ def main():
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    model, tx = fit_model_to_pointcloud(x, n, args, seed=seed)
+    model, tx = fit_model_to_pointcloud(x, n, num_ny=args.num_nystrom_samples, eps=args.eps,
+                                        kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
+                                        cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
+                                        outer_layer_variance=args.outer_layer_variance, seed=seed)
     recon = eval_model_on_grid(model, scaled_bbox, tx, out_grid_size)
     v, f, n, c = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()

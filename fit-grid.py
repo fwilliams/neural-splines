@@ -52,8 +52,8 @@ def main():
                                 "NOTE: This can massively speed up reconstruction for very large point clouds and "
                                 "generally won't throw away any details.")
     argparser.add_argument("--kernel", type=str, default="neural-spline",
-                           help="Which kernel to use. Must be one of 'neural-spline' or 'spherical-laplace'. "
-                                "Default is 'neural-spline'."
+                           help="Which kernel to use. Must be one of 'neural-spline', 'spherical-laplace', or "
+                                "'linear-angle'. Default is 'neural-spline'."
                                 "NOTE: The spherical laplace is a good approximation to the neural tangent kernel"
                                 "(see https://arxiv.org/pdf/2007.01580.pdf for details)")
     argparser.add_argument("--seed", type=int, default=-1, help="Random number generator seed to use.")
@@ -135,8 +135,12 @@ def main():
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
-        cell_model, tx = fit_model_to_pointcloud(x[mask_padded_cell], n[mask_padded_cell], args,
-                                                 seed=seed, print_message=False)
+        cell_model, tx = fit_model_to_pointcloud(x[mask_padded_cell], n[mask_padded_cell],
+                                                 num_ny=args.num_nystrom_samples, eps=args.eps,
+                                                 kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
+                                                 cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
+                                                 outer_layer_variance=args.outer_layer_variance, seed=seed,
+                                                 verbosity_level=7)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
                                         cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
