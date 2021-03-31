@@ -14,7 +14,7 @@ _VERBOSITY_LEVEL_SILENT = 5
 
 # On new installations of KeOps, the first time we compile a kernel fails
 try:
-    kmeans(torch.rand([3, 3]), 1)
+    kmeans(torch.rand([3, 3]), 2)
 except ModuleNotFoundError:
     pass
 
