@@ -15,14 +15,15 @@ This repository contains the official implementation of the CVPR 2021 (Oral) pap
     + [Additional arguments to `fit.py` and `fit-grid.py`](#additional-arguments-to--fitpy--and--fit-gridpy-)
 - [Using Neural Splines in Python](#using-neural-splines-in-python)
 
+## Setup Instructions
 
-## System Requirements
+### System Requirements
 Neural Splines uses [FALKON](https://arxiv.org/abs/1705.10958), a state-of-the-art kernel ridge regression solver to fit 
 surfaces on one or more GPUs. We thus require at least one GPU to run Neural Splines. We additionally require a working version of the CUDA compiler `nvcc`.
 We recommend running this code on a machine with a lot of memory if you want to reconstruct large point clouds 
 since Neural Splines stores an MxM preconditioner matrix in CPU memory (where M is the number of Nystrom samples). 
 
-## Installing Dependencies
+### Installing Dependencies
 Neural splines has several dependencies which must be installed before it can be used. Some of these dependencies must be built and take time to install. 
 There are three ways to install dependencies:
 
@@ -51,7 +52,7 @@ You will also need to build the following dependencies from source. The easiest 
 * [FALKON](https://github.com/fwilliams/falkon/tree/kml): `pip install git+https://github.com/fwilliams/falkon.git@kml`
 * [KeOps](https://github.com/fwilliams/keops/tree/falkon)`pip install git+https://github.com/fwilliams/keops.git@falkon`
 
-## Testing Your Installation
+### Testing Your Installation
 ⚠️ **WARNING** ⚠️ Due to a bug in [KeOps](https://www.kernel-operations.io/keops/index.html), the first time you use any code in this repository will throw a `ModuleNotFoundError`. All subsequent invocations of Neural Splines should work.
 
 1. Download and unzip the [example point clouds here](http://storage.googleapis.com/local-implicit-grids/demo_data.zip)
