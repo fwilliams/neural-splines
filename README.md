@@ -8,6 +8,7 @@ This repository contains the official implementation of the CVPR 2021 (Oral) pap
     + [Installing Dependencies with `conda`](#installing-dependencies-with--conda-)
     + [Installing Dependencies with `pip`](#installing-dependencies-with--pip-)
     + [Installing Dependencies Manually (Not Recommended)](#installing-dependencies-manually--not-recommended-)
+- [Testing Your Installation](#testing-your-installation)
 - [Using Neural Splines from the Command Line](#using-neural-splines-from-the-command-line)
     + [Reconstructing a point cloud with `fit.py`](#reconstructing-a-point-cloud-with--fitpy-)
     + [Reconstructing very large point clouds with `fit-grid.py`](#reconstructing-very-large-point-clouds-with--fit-gridpy-)
