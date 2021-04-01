@@ -33,10 +33,12 @@ def main():
     argparser.add_argument("--overlap", type=float, default=0.25,
                            help="By how much should each grid cell overlap as a fraction of the bounding "
                                 "box diagonal. Default is 0.25")
+    argparser.add_argument("--min-pts-per-cell", type=int, default=0,
+                           help="Ignore cells with fewer points than this value. Default is zero.")
+
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
                                 " the diameter of the bounding box of the input points. Defaults is 1.1.")
-
     argparser.add_argument("--regularization", type=float, default=1e-7,
                            help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
     argparser.add_argument("--nystrom-mode", type=str, default="random",
@@ -126,7 +128,7 @@ def main():
 
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
-        if mask_cell.sum() <= 0:
+        if mask_cell.sum() <= max(args.min_pts_per_cell, 0):
             tqdm_bar.update(1)
             continue
 
@@ -139,7 +141,8 @@ def main():
                                                  num_ny=args.num_nystrom_samples, eps=args.eps,
                                                  kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
                                                  cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
-                                                 outer_layer_variance=args.outer_layer_variance, verbosity_level=7)
+                                                 outer_layer_variance=args.outer_layer_variance,
+                                                 verbosity_level=7 if not args.verbose else 0)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
                                         cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
