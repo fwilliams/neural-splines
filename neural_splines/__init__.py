@@ -25,7 +25,7 @@ def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1
     elif sampling_method == 'blue-noise':
         blue_noise_seed = np.random.randint(2 ** 31 - 1)
         if verbosity_level <= _VERBOSITY_LEVEL_INFO:
-            print("Generating blue noise Nyström samples.")
+            print(f"Generating {num_samples} blue noise Nyström samples for {x.shape[0]} points.")
         ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=blue_noise_seed)
         x_ny = x[ny_idx]
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
