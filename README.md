@@ -77,7 +77,7 @@ There are two scripts in this repository to fit surfaces from the command line:
 
 `fit.py` fits an input point cloud using a single Neural Spline. This approach works best for relatively small inputs which don't have too much geometric complexity. `fit.py` takes least the following arguments
 ```
-usage: fit.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE>
+fit.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE>
 ```
 where
 * **`<INPUT_POINT_CLOUD>`** is a path to a PLY file containing 3D points and corresponding normals
@@ -96,7 +96,7 @@ where
 
 `fit-grid.py` fits an input point cloud in chunks using a different Neural Spline per chunk. This approach works well when the input point cloud is large or has a lot of geometric complexity. `fit-grid.py` takes the following arguments
 ```
-usage: fit-grid.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS> --overlap <OVERLAP>
+fit-grid.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS> --overlap <OVERLAP>
 ```
 where
 * **`<INPUT_POINT_CLOUD>`** is a path to a PLY file containing 3D points and corresponding normals
