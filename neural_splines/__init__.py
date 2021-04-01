@@ -16,7 +16,14 @@ _VERBOSITY_LEVEL_SILENT = 5
 def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1):
     if x.shape[1] != 3:
         raise ValueError(f"Invalid shape for x, must be [N, 3] but got {x.shape}")
-    if sampling_method == 'random':
+
+    if x.shape[0] < num_samples:
+        if verbosity_level <= _VERBOSITY_LEVEL_INFO:
+            print(f"Requested more Nyström samples ({num_samples}) than points ({x.shape[0]}) using all points.")
+        center_selector = 'uniform'
+        x_ny = None
+        ny_count = min(num_samples, x.shape[0])
+    elif sampling_method == 'random':
         if verbosity_level <= _VERBOSITY_LEVEL_INFO:
             print("Using Nyström samples chosen uniformly at random from the input.")
         center_selector = 'uniform'
