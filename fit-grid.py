@@ -151,10 +151,10 @@ def main():
         tqdm_bar.update(1)
 
         if count % 10 == 0:
-            v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
-            v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
-            pcu.write_ply("derp.ply", v.astype(np.float32), f.astype(np.int32), n.astype(np.float32),
-                          c.astype(np.float32))
+            v_, f_, n_, c_ = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
+            v_ += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
+            pcu.write_ply("derp.ply", v_.astype(np.float32), f_.astype(np.int32), n_.astype(np.float32),
+                          c_.astype(np.float32))
         count += 1
 
     if args.save_grid:
