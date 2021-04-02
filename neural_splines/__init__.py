@@ -34,8 +34,8 @@ def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1
         if verbosity_level <= _VERBOSITY_LEVEL_INFO:
             print(f"Generating {num_samples} blue noise Nyström samples for {x.shape[0]} points.")
 
-        # Allow generating +/- 15% of the requested samples so the algorighm converges fast
-        sample_num_tolerance = 0.15
+        # Allow generating +/- 5% of the requested samples so the algorighm converges fast
+        sample_num_tolerance = 0.05
         ny_idx = pcu.downsample_point_cloud_poisson_disk(x.numpy(), num_samples, random_seed=blue_noise_seed,
                                                          sample_num_tolerance=sample_num_tolerance)
         x_ny = x[ny_idx]
@@ -153,8 +153,8 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
 
     tx = normalize_pointcloud_transform(x)
     x = affine_transform_pointcloud(x, tx)
-    if verbosity_level >= _VERBOSITY_LEVEL_DEBUG:
-        torch.save((x, y, tx), "tpx.pth")
+    # if verbosity_level >= _VERBOSITY_LEVEL_DEBUG:
+    #     torch.save((x, y, tx), "tpx.pth")
 
     x_ny, center_selector, ny_count = _generate_nystrom_samples(x, num_ny, ny_mode, verbosity_level=verbosity_level)
 
