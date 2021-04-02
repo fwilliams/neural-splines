@@ -112,6 +112,9 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     :return: A pair v, n,  where v is a an [N, 3]-shaped tensor of points, n is a [N, 3]-shaped tensor of unit normals
     """
     v, _, n, _ = pcu.read_ply(filename, dtype=np.float64)
+    v, idx, _ = pcu.remove_duplicate_points(v, 1e-15)  # Deduplicate point cloud when loading it
+    n = n[idx]
+
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
     # We use this mask to remove bad vertices
     mask = np.linalg.norm(n, axis=-1) > min_norm_normal
