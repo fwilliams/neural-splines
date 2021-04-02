@@ -153,8 +153,6 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
 
     tx = normalize_pointcloud_transform(x)
     x = affine_transform_pointcloud(x, tx)
-    # if verbosity_level >= _VERBOSITY_LEVEL_DEBUG:
-    #     torch.save((x, y, tx), "tpx.pth")
 
     x_ny, center_selector, ny_count = _generate_nystrom_samples(x, num_ny, ny_mode, verbosity_level=verbosity_level)
 
