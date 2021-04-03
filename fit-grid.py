@@ -141,7 +141,7 @@ def main():
         tx = - 1.5 * padded_cell_bbox[0], 1.0 / torch.max(padded_cell_bbox[1])
         x_cell = x[mask_padded_cell].clone()
         n_cell = n[mask_padded_cell].clone()
-        affine_transform_pointcloud(x_cell, tx)
+        x_cell = affine_transform_pointcloud(x_cell, tx)
         print(x_cell.min(0)[0], x_cell.max(0)[0])
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
