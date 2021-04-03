@@ -138,10 +138,12 @@ def main():
         padded_cell_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
-        tx = - 1.5 * padded_cell_bbox[0], 1.0 / np.max(padded_cell_bbox[1])
+        tx = - 1.5 * padded_cell_bbox[0], 1.0 / torch.max(padded_cell_bbox[1])
         x_cell = x[mask_padded_cell].clone()
         n_cell = n[mask_padded_cell].clone()
-        affine_transform_pointcloud(x_cell)
+        affine_transform_pointcloud(x_cell, tx)
+        print(x_cell.min(0)[0], x_cell.max(0)[0])
+
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
                                                 num_ny=args.num_nystrom_samples, eps=args.eps,
