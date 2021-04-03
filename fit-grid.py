@@ -117,7 +117,8 @@ def main():
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
-    count = 0
+    # count = 0
+
     # Iterate over each grid cell
     tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
     for cell_idx, cell_vmin, cell_vmax in voxel_chunks(out_grid_size, args.cells_per_axis):
@@ -150,12 +151,12 @@ def main():
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
 
-        if count % 10 == 0:
-            v_, f_, n_, c_ = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
-            v_ += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
-            pcu.write_ply("derp.ply", v_.astype(np.float32), f_.astype(np.int32), n_.astype(np.float32),
-                          c_.astype(np.float32))
-        count += 1
+        # if count % 10 == 0:
+        #     v_, f_, n_, c_ = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
+        #     v_ += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
+        #     pcu.write_ply("derp.ply", v_.astype(np.float32), f_.astype(np.int32), n_.astype(np.float32),
+        #                   c_.astype(np.float32))
+        # count += 1
 
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
