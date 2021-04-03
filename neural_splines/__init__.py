@@ -131,7 +131,8 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
                             reg=1e-7, ny_mode='blue-noise',
                             cg_stop_thresh=1e-5, cg_max_iters=20,
                             outer_layer_variance=1.0,
-                            verbosity_level=1, custom_falkon_opts=None):
+                            verbosity_level=1, custom_falkon_opts=None,
+                            normalize=True):
     """
     Fit a kernel to the point cloud with points x and normals n.
     :param x: A tensor of 3D points with shape [N, 3]
@@ -147,6 +148,7 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
     :param outer_layer_variance: Variance o
     :param verbosity_level: How much should this function spam your terminal. 0 = debug, 1 = info, >5 = silent
     :param custom_falkon_opts: Object of type falkon.FalkonOptions object used to override the default solver settings
+    :param normalize: If set, then normalize the point cloud to have zero mean
     :return: A pair (model, tx) where model is a fitted neural spline model class (with the same API as scikit-learn)
              and tx is an affine transformation which converts world space samples to model coordinates.
              You *must* apply this transformation to points before evaluating the model.
@@ -154,7 +156,10 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
     """
     x, y = triple_points_along_normals(x, n, eps, homogeneous=False)
 
-    tx = normalize_pointcloud_transform(x)
+    if normalize:
+        tx = normalize_pointcloud_transform(x)
+    else:
+        tx = 0.0, 1.0
     x = affine_transform_pointcloud(x, tx)
 
     x_ny, center_selector, ny_count = _generate_nystrom_samples(x, num_ny, ny_mode, verbosity_level=verbosity_level)

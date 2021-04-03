@@ -7,7 +7,7 @@ import torch
 from skimage.measure import marching_cubes
 
 from neural_splines import load_point_cloud, point_cloud_bounding_box, fit_model_to_pointcloud, eval_model_on_grid, \
-    voxel_chunks, points_in_bbox, scale_bounding_box_diameter
+    voxel_chunks, points_in_bbox, scale_bounding_box_diameter, affine_transform_pointcloud
 
 
 def main():
@@ -138,13 +138,18 @@ def main():
         padded_cell_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
+        tx = - 1.5 * padded_cell_bbox[0], 1.0 / np.max(padded_cell_bbox[1])
+        x_cell = x[mask_padded_cell].clone()
+        n_cell = n[mask_padded_cell].clone()
+        affine_transform_pointcloud(x_cell)
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
-        cell_model, tx = fit_model_to_pointcloud(x[mask_padded_cell], n[mask_padded_cell],
-                                                 num_ny=args.num_nystrom_samples, eps=args.eps,
-                                                 kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
-                                                 cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
-                                                 outer_layer_variance=args.outer_layer_variance,
-                                                 verbosity_level=7 if not args.verbose else 0)
+        cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
+                                                num_ny=args.num_nystrom_samples, eps=args.eps,
+                                                kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
+                                                cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
+                                                outer_layer_variance=args.outer_layer_variance,
+                                                verbosity_level=7 if not args.verbose else 0,
+                                                normalize=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
                                         cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
