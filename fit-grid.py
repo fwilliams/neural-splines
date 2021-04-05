@@ -80,6 +80,7 @@ def main():
                            help="Variance of the outer layer of the neural network from which the neural "
                                 "spline kernel arises from. Default is 1.0.")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
+    argparser.add_argument("--debug", action="store_true")
     args = argparser.parse_args()
 
     if args.dtype == "float64":
@@ -138,7 +139,8 @@ def main():
         padded_cell_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
-        tx = - 1.5 * padded_cell_bbox[0], 1.0 / torch.max(padded_cell_bbox[1])
+        # Center the cell so it lies in [-0.5, 0.5]^3
+        tx = -padded_cell_bbox[0] - 0.5 * padded_cell_bbox[1], 1.0 / torch.max(padded_cell_bbox[1])
         x_cell = x[mask_padded_cell].clone()
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
@@ -158,6 +160,12 @@ def main():
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
 
+        if args.debug:
+            print("Saving debug mesh for cell", cell_idx)
+            pcu.save_mesh_vn(f"pts.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply", x_cell.numpy(), n_cell.numpy())
+            v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon)
+            pcu.save_mesh_vfn(f"recon.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
+                              v_cell_rec.numpy(), f_cell_rec.numpy(), n_cell_rec.numpy())
         # if count % 10 == 0:
         #     v_, f_, n_, c_ = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
         #     v_ += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
