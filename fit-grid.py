@@ -166,7 +166,7 @@ def main():
                               x_cell.numpy(), None, n_cell.numpy())
             v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon.numpy(), level=0.0)
             pcu.save_mesh_vfn(f"recon.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
-                              v_cell_rec.numpy(), f_cell_rec.numpy(), n_cell_rec.numpy())
+                              v_cell_rec, f_cell_rec, n_cell_rec)
         # if count % 10 == 0:
         #     v_, f_, n_, c_ = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
         #     v_ += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
