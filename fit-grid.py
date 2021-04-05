@@ -41,12 +41,12 @@ def main():
                                 " the diameter of the bounding box of the input points. Defaults is 1.1.")
     argparser.add_argument("--regularization", type=float, default=1e-7,
                            help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
-    argparser.add_argument("--nystrom-mode", type=str, default="random",
+    argparser.add_argument("--nystrom-mode", type=str, default="blue-noise",
                            help="How to generate nystrom samples. Default is 'k-means'. Must be one of "
                                 "(1) 'random': choose Nyström samples at random from the input, "
                                 "(2) 'blue-noise': downsample the input with blue noise to get Nyström samples, or "
                                 "(3) 'k-means': use k-means clustering to generate Nyström samples. "
-                                "Default is 'random'")
+                                "Default is 'blue-noise'")
     argparser.add_argument("--voxel-downsample-threshold", type=int, default=150_000,
                            help="If the number of input points is greater than this value, downsample it by "
                                 "averaging points and normals within voxels on a grid. The size of the voxel grid is "
@@ -80,7 +80,6 @@ def main():
                            help="Variance of the outer layer of the neural network from which the neural "
                                 "spline kernel arises from. Default is 1.0.")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
-    argparser.add_argument("--debug", action="store_true")
     args = argparser.parse_args()
 
     if args.dtype == "float64":
@@ -117,8 +116,6 @@ def main():
     out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
-
-    # count = 0
 
     # Iterate over each grid cell
     tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
@@ -158,21 +155,6 @@ def main():
         out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
-
-        if args.debug:
-            print("Saving debug mesh for cell", cell_idx)
-            print("Cell range", x_cell.min(0)[0].numpy(), x_cell.max(0)[0].numpy())
-            pcu.save_mesh_vfn(f"pts.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
-                              x_cell.numpy(), None, n_cell.numpy())
-            v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon.numpy(), level=0.0)
-            pcu.save_mesh_vfn(f"recon.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
-                              v_cell_rec, f_cell_rec, n_cell_rec)
-        # if count % 10 == 0:
-        #     v_, f_, n_, c_ = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
-        #     v_ += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
-        #     pcu.write_ply("derp.ply", v_.astype(np.float32), f_.astype(np.int32), n_.astype(np.float32),
-        #                   c_.astype(np.float32))
-        # count += 1
 
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
