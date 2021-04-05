@@ -162,7 +162,8 @@ def main():
 
         if args.debug:
             print("Saving debug mesh for cell", cell_idx)
-            pcu.save_mesh_vn(f"pts.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply", x_cell.numpy(), n_cell.numpy())
+            pcu.save_mesh_vfn(f"pts.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
+                              x_cell.numpy(), None, n_cell.numpy())
             v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon)
             pcu.save_mesh_vfn(f"recon.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
                               v_cell_rec.numpy(), f_cell_rec.numpy(), n_cell_rec.numpy())
@@ -178,7 +179,7 @@ def main():
 
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
-    pcu.write_ply(args.out, v.astype(np.float32), f.astype(np.int32), n.astype(np.float32), c.astype(np.float32))
+    pcu.save_mesh_vfn(args.out, v, f, n)
 
 
 if __name__ == "__main__":
