@@ -144,7 +144,6 @@ def main():
         x_cell = x[mask_padded_cell].clone()
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
-        print(x_cell.min(0)[0], x_cell.max(0)[0])
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
@@ -162,6 +161,7 @@ def main():
 
         if args.debug:
             print("Saving debug mesh for cell", cell_idx)
+            print("Cell range", x_cell.min(0)[0].numpy(), x_cell.max(0)[0].numpy())
             pcu.save_mesh_vfn(f"pts.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
                               x_cell.numpy(), None, n_cell.numpy())
             v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon.numpy(), level=0.0)
