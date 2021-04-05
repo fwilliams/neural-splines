@@ -164,7 +164,7 @@ def main():
             print("Saving debug mesh for cell", cell_idx)
             pcu.save_mesh_vfn(f"pts.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
                               x_cell.numpy(), None, n_cell.numpy())
-            v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon)
+            v_cell_rec, f_cell_rec, n_cell_rec, clr_cell_rec = marching_cubes(cell_recon.numpy(), level=0.0)
             pcu.save_mesh_vfn(f"recon.{cell_idx[0]}.{cell_idx[1]}.{cell_idx[2]}.ply",
                               v_cell_rec.numpy(), f_cell_rec.numpy(), n_cell_rec.numpy())
         # if count % 10 == 0:
