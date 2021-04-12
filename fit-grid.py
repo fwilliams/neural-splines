@@ -146,6 +146,7 @@ def main():
 
         # Cell trilinear blending weights
         weights, pcell_vmin, pcell_vmax = cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size)
+        print("weights.shape", weights.shape)
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
@@ -157,6 +158,7 @@ def main():
                                                 normalize=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
                                         cell_vox_min=pcell_vmin, cell_vox_max=pcell_vmax, print_message=False)
+        print("cell_recon.shape", cell_recon.shape)
 
         w_cell_recon = weights * cell_recon
         out_grid[pcell_vmin[0]:pcell_vmax[0], pcell_vmin[1]:pcell_vmax[1], pcell_vmin[2]:pcell_vmax[2]] += w_cell_recon
@@ -184,20 +186,15 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
 
     padded_cell_vmin = torch.round(pbmin / voxel_size).to(torch.int32)
     padded_cell_vmax = torch.round(pbmax / voxel_size).to(torch.int32)
-    print("pbbox_s", padded_cell_bbox[0], padded_cell_bbox[1])
-    print("pbbmin, pbbmax", pbmin, pbmax)
-    print("pbmin/v, pbmax/v", pbmin/voxel_size, pbmax/voxel_size)
-    print("voxel_size", voxel_size)
-    print(padded_cell_vmin, padded_cell_vmax)
+
     psize = (padded_cell_vmax - padded_cell_vmin).numpy() * 1j
     pmin = ((padded_cell_vmin + 0.5) * voxel_size).numpy()
     pmax = ((padded_cell_vmax - 0.5) * voxel_size).numpy()
-    print("pmin, pmax, psize", pmin, pmax, psize)
     pts = np.stack([np.ravel(a) for a in
                     np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
 
-    padded_cell_size = padded_cell_vmax - padded_cell_vmin
-    return torch.from_numpy(f_w(pts).reshape(padded_cell_size.numpy())), padded_cell_vmin, padded_cell_vmax
+    padded_cell_size = (padded_cell_vmax - padded_cell_vmin).numpy()
+    return torch.from_numpy(f_w(pts).reshape(padded_cell_size)), padded_cell_vmin, padded_cell_vmax
 
 
 if __name__ == "__main__":
