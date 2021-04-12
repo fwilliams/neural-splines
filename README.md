@@ -1,5 +1,5 @@
 # Neural Splines: Fitting 3D Surfaces with Inifinitely-Wide Neural Networks
-![Neural Splines Teaser](https://github.com/fwilliams/neural-splines/blob/master/imgs/teaser.png)
+![Neural Splines Teaser](imgs/teaser.png)
 This repository contains the official implementation of the CVPR 2021 (Oral) paper [Neural Splines: Fitting 3D Surfaces with Infinitely-Wide Neural Networks](https://arxiv.org/abs/2006.13782).
 
 ## Table of Contents
@@ -62,8 +62,8 @@ You will also need to build the following dependencies from source. The easiest 
 5. Run `python fit-grid.py demo_data/living_room_33_500_per_m2.ply 0.005 10_000 512 8` which will produce another `recon.ply` mesh, this time of a full room as shown below.
 <p align="center">
     <span>
-        <img src="https://github.com/fwilliams/neural-splines/blob/master/imgs/bunny.png" alt="A reconstructed Stanford Bunny" width="33%">
-        <img src="https://github.com/fwilliams/neural-splines/blob/master/imgs/room.png" alt="A reconstruced living room" width="33%">
+        <img src="imgs/bunny.png" alt="A reconstructed Stanford Bunny" width="33%">
+        <img src="imgs/room.png" alt="A reconstruced living room" width="33%">
     </span>
 </p>
 
