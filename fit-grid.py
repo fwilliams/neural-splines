@@ -197,7 +197,7 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
                     np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
 
     padded_cell_size = padded_cell_vmax - padded_cell_vmin
-    return f_w(pts).reshape(padded_cell_size.nu,py()), padded_cell_vmin, padded_cell_vmax
+    return f_w(pts).reshape(padded_cell_size.numpy()), padded_cell_vmin, padded_cell_vmax
 
 
 if __name__ == "__main__":
