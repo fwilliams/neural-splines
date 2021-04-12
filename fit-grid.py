@@ -179,7 +179,7 @@ def main():
     pcu.save_mesh_vfn(args.out, v, f, n)
 
 
-def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
+def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
     pbmin, pbmax = padded_cell_bbox[0], padded_cell_bbox[0] + padded_cell_bbox[1]
     bmin, bmax = cell_bbox[0], cell_bbox[0] + cell_bbox[1]
     x, y, z = [np.unique(np.array([pbmin[i], bmin[i], bmax[i], pbmax[i]])) for i in range(3)]
@@ -213,8 +213,10 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
     pts = np.stack([np.ravel(a) for a in
                     np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
 
+    padded_cell_min = torch.round((pbmin - total_bbox[0]) / voxel_size).to(torch.int32)
     padded_cell_size = (padded_cell_vmax - padded_cell_vmin).numpy()
-    return torch.from_numpy(f_w(pts).reshape(padded_cell_size)), padded_cell_vmin, padded_cell_vmax
+    padded_cell_max = padded_cell_min + padded_cell_size
+    return torch.from_numpy(f_w(pts).reshape(padded_cell_size)), padded_cell_min, padded_cell_max
 
 
 if __name__ == "__main__":
