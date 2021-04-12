@@ -9,6 +9,8 @@ from skimage.measure import marching_cubes
 from neural_splines import load_point_cloud, point_cloud_bounding_box, fit_model_to_pointcloud, eval_model_on_grid, \
     voxel_chunks, points_in_bbox, scale_bounding_box_diameter, affine_transform_pointcloud
 
+from scipy.interpolate import RegularGridInterpolator
+
 
 def main():
     argparser = argparse.ArgumentParser()
@@ -142,6 +144,9 @@ def main():
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
 
+        # Cell trilinear blending weights
+        weights, pcell_vmin, pcell_vmax = cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size)
+
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
                                                 num_ny=args.num_nystrom_samples, eps=args.eps,
@@ -151,8 +156,10 @@ def main():
                                                 verbosity_level=7 if not args.verbose else 0,
                                                 normalize=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
-                                        cell_vox_min=cell_vmin, cell_vox_max=cell_vmax, print_message=False)
-        out_grid[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = cell_recon
+                                        cell_vox_min=pcell_vmin, cell_vox_max=pcell_vmax, print_message=False)
+
+        w_cell_recon = weights * cell_recon
+        out_grid[pcell_vmin[0]:pcell_vmax[0], pcell_vmin[1]:pcell_vmax[1], pcell_vmin[2]:pcell_vmax[2]] += w_cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
 
@@ -162,6 +169,30 @@ def main():
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
     pcu.save_mesh_vfn(args.out, v, f, n)
+
+
+def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
+    pbmin, pbmax = padded_cell_bbox[0], padded_cell_bbox[0] + padded_cell_bbox[1]
+    bmin, bmax = cell_bbox[0], cell_bbox[0] + cell_bbox[1]
+    x, y, z = [np.array([pbmin[i], bmin[i], bmax[i], pbmax[i]]) for i in range(3)]
+    vals = np.zeros([4, 4, 4])
+    for i in [1, 2]:
+        for j in [1, 2]:
+            for k in [1, 2]:
+                vals[i, j, k] = 1.0
+    f_w = RegularGridInterpolator((x, y, z), vals)
+
+    padded_cell_vmin = np.round(padded_cell_bbox[0] / voxel_size).astype(np.int32)
+    padded_cell_vmax = np.round((padded_cell_bbox[0] + padded_cell_bbox[1]) / voxel_size).astype(np.int32)
+
+    psize = (padded_cell_vmax - padded_cell_vmin) * 1j
+    pmin = (padded_cell_vmin + 0.5) * voxel_size
+    pmax = (padded_cell_vmax - 0.5) * voxel_size
+    pts = np.stack([np.ravel(a) for a in
+                    np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
+
+    padded_cell_size = padded_cell_vmax - padded_cell_vmin
+    return f_w(pts).reshape(padded_cell_size), padded_cell_vmin, padded_cell_vmax
 
 
 if __name__ == "__main__":
