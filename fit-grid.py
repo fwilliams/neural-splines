@@ -205,8 +205,8 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
                 vals[i, j, k] = 1.0
     f_w = RegularGridInterpolator((x, y, z), vals)
 
-    padded_cell_vmin = torch.round(pbmin / voxel_size).to(torch.int32)
-    padded_cell_vmax = torch.round(pbmax / voxel_size).to(torch.int32)
+    padded_cell_vmin = torch.floor(pbmin / voxel_size).to(torch.int32)
+    padded_cell_vmax = torch.floor(pbmax / voxel_size).to(torch.int32)
 
     psize = (padded_cell_vmax - padded_cell_vmin).numpy() * 1j
     pmin = ((padded_cell_vmin + 0.5) * voxel_size).numpy()
@@ -214,8 +214,8 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
     pts = np.stack([np.ravel(a) for a in
                     np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
 
-    padded_cell_min = torch.round((pbmin - total_bbox[0]) / voxel_size).to(torch.int32)
-    padded_cell_max = torch.round((pbmax - total_bbox[0]) / voxel_size).to(torch.int32)
+    padded_cell_min = torch.floor((pbmin - total_bbox[0]) / voxel_size).to(torch.int32)
+    padded_cell_max = torch.floor((pbmax - total_bbox[0]) / voxel_size).to(torch.int32)
     padded_cell_size = (padded_cell_vmax - padded_cell_vmin).numpy()
     return torch.from_numpy(f_w(pts).reshape(padded_cell_size)), padded_cell_min, padded_cell_max
 
