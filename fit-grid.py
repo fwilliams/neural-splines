@@ -184,7 +184,7 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
 
     padded_cell_vmin = torch.round(padded_cell_bbox[0] / voxel_size).to(torch.int32)
     padded_cell_vmax = torch.round((padded_cell_bbox[0] + padded_cell_bbox[1]) / voxel_size).to(torch.int32)
-
+    print(padded_cell_vmax, padded_cell_vmin)
     psize = (padded_cell_vmax - padded_cell_vmin) * 1j
     pmin = (padded_cell_vmin + 0.5) * voxel_size
     pmax = (padded_cell_vmax - 0.5) * voxel_size
