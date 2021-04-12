@@ -188,6 +188,7 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
     psize = (padded_cell_vmax - padded_cell_vmin) * 1j
     pmin = (padded_cell_vmin + 0.5) * voxel_size
     pmax = (padded_cell_vmax - 0.5) * voxel_size
+    print(pmin, pmax, psize)
     pts = np.stack([np.ravel(a) for a in
                     np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
 
