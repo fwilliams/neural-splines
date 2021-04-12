@@ -188,7 +188,7 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
         if xyz[dim].shape[0] == 2:
             one_idxs.append([0, 1])
         elif xyz[dim].shape[0] == 3:
-            if padded_cell_bbox[0] == cell_bbox[0]:
+            if padded_cell_bbox[0, dim] == cell_bbox[0, dim]:
                 one_idxs.append([0, 1])
             else:
                 one_idxs.append([1, 2])
