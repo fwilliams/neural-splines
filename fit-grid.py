@@ -179,11 +179,25 @@ def main():
 def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
     pbmin, pbmax = padded_cell_bbox[0], padded_cell_bbox[0] + padded_cell_bbox[1]
     bmin, bmax = cell_bbox[0], cell_bbox[0] + cell_bbox[1]
-    x, y, z = [np.array([pbmin[i], bmin[i], bmax[i], pbmax[i]]) for i in range(3)]
-    vals = np.zeros([4, 4, 4])
-    for i in [1, 2]:
-        for j in [1, 2]:
-            for k in [1, 2]:
+    x, y, z = [np.unique(np.array([pbmin[i], bmin[i], bmax[i], pbmax[i]])) for i in range(3)]
+    vals = np.zeros([x.shape[0], y.shape[0], z.shape[0]])
+    xyz = (x, y, z)
+
+    one_idxs = []
+    for dim in range(3):
+        if xyz[dim].shape[0] == 2:
+            one_idxs.append([0, 1])
+        elif xyz[dim].shape[0] == 3:
+            if padded_cell_bbox[0] == cell_bbox[0]:
+                one_idxs.append([0, 1])
+            else:
+                one_idxs.append([1, 2])
+        else:
+            one_idxs.append([1, 2])
+
+    for i in one_idxs[0]:
+        for j in one_idxs[1]:
+            for k in one_idxs[2]:
                 vals[i, j, k] = 1.0
     f_w = RegularGridInterpolator((x, y, z), vals)
 
