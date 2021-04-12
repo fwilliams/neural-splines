@@ -215,8 +215,8 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
                     np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
 
     padded_cell_min = torch.round((pbmin - total_bbox[0]) / voxel_size).to(torch.int32)
+    padded_cell_max = torch.round((pbmax - total_bbox[0]) / voxel_size).to(torch.int32)
     padded_cell_size = (padded_cell_vmax - padded_cell_vmin).numpy()
-    padded_cell_max = padded_cell_min + padded_cell_size
     return torch.from_numpy(f_w(pts).reshape(padded_cell_size)), padded_cell_min, padded_cell_max
 
 
