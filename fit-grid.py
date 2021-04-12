@@ -183,7 +183,7 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size):
     f_w = RegularGridInterpolator((x, y, z), vals)
 
     padded_cell_vmin = np.round(padded_cell_bbox[0] / voxel_size).astype(np.int32)
-    padded_cell_vmax = np.round((padded_cell_bbox[0] + padded_cell_bbox[1]) / voxel_size).astype(np.int32)
+    padded_cell_vmax = np.round((padded_cell_bbox[0] + padded_cell_bbox[1]) / voxel_size).to(torch.int32)
 
     psize = (padded_cell_vmax - padded_cell_vmin) * 1j
     pmin = (padded_cell_vmin + 0.5) * voxel_size
