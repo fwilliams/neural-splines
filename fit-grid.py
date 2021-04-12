@@ -145,7 +145,10 @@ def main():
         x_cell = affine_transform_pointcloud(x_cell, tx)
 
         # Cell trilinear blending weights
-        weights, pcell_vmin, pcell_vmax = cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size)
+        pbbox_min = torch.maximum(scaled_bbox[0], padded_cell_bbox[0])
+        pbbox_max = torch.minimum(scaled_bbox[0] + scaled_bbox[1], padded_cell_bbox[0] + padded_cell_bbox[1])
+        pbbox_size = pbbox_max - pbbox_min
+        weights, pcell_vmin, pcell_vmax = cell_weights_trilinear((pbbox_min, pbbox_size), cell_bbox, voxel_size)
         print("weights.shape", weights.shape)
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
