@@ -164,6 +164,7 @@ def main():
         print("cell_recon.shape", cell_recon.shape)
 
         w_cell_recon = weights * cell_recon
+        print("w_cell_recon.shape", w_cell_recon.shape)
         out_grid[pcell_vmin[0]:pcell_vmax[0], pcell_vmin[1]:pcell_vmax[1], pcell_vmin[2]:pcell_vmax[2]] += w_cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
