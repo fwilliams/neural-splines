@@ -134,8 +134,14 @@ def main():
             tqdm_bar.update(1)
             continue
 
+        # Amount of voxels to pad by per-cell and min/max indexes of the padded cell
+        cell_pad_vox = torch.round(0.5 * args.overlap * out_grid_size.to(torch.float64) / args.cells_per_axis)
+        cell_pad_amount = cell_pad_vox * voxel_size
+        cell_pvmin = torch.maximum(cell_vmin - cell_pad_vox, torch.zeros(3).to(cell_vmin)).to(torch.int32)
+        cell_pvmax = torch.minimum(cell_vmax + cell_pad_vox, torch.tensor(out_grid.shape).to(cell_vmin)).to(torch.int32)
+
         # Pad the cell slightly so boundaries agree
-        padded_cell_bbox = scale_bounding_box_diameter(cell_bbox, 1.0 + args.overlap)
+        padded_cell_bbox = cell_bbox[0] - cell_pad_amount, cell_bbox[1] + 2.0 * cell_pad_amount
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
         # Center the cell so it lies in [-0.5, 0.5]^3
@@ -144,13 +150,10 @@ def main():
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
 
+
+
         # Cell trilinear blending weights
-        pbbox_min = torch.maximum(scaled_bbox[0], padded_cell_bbox[0])
-        pbbox_max = torch.minimum(scaled_bbox[0] + scaled_bbox[1], padded_cell_bbox[0] + padded_cell_bbox[1])
-        pbbox_size = pbbox_max - pbbox_min
-        weights, pcell_vmin, pcell_vmax = cell_weights_trilinear((pbbox_min, pbbox_size),
-                                                                 cell_bbox, voxel_size, scaled_bbox)
-        print("weights.shape", weights.shape)
+        weights = cell_weights_trilinear(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax)
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
@@ -161,14 +164,11 @@ def main():
                                                 verbosity_level=7 if not args.verbose else 0,
                                                 normalize=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
-                                        cell_vox_min=pcell_vmin, cell_vox_max=pcell_vmax, print_message=False)
+                                        cell_vox_min=cell_pvmin, cell_vox_max=cell_pvmax, print_message=False)
         print("cell_recon.shape", cell_recon.shape)
 
         w_cell_recon = weights * cell_recon
-        print("w_cell_recon.shape", w_cell_recon.shape)
-        print(out_grid[pcell_vmin[0]:pcell_vmax[0], pcell_vmin[1]:pcell_vmax[1], pcell_vmin[2]:pcell_vmax[2]].shape)
-        print(pcell_vmin, pcell_vmax, pcell_vmax-pcell_vmin)
-        out_grid[pcell_vmin[0]:pcell_vmax[0], pcell_vmin[1]:pcell_vmax[1], pcell_vmin[2]:pcell_vmax[2]] += w_cell_recon
+        out_grid[cell_pvmin[0]:cell_pvmax[0], cell_pvmin[1]:cell_pvmax[1], cell_pvmin[2]:cell_pvmax[2]] += w_cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
 
@@ -180,10 +180,11 @@ def main():
     pcu.save_mesh_vfn(args.out, v, f, n)
 
 
-def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
-    pbmin, pbmax = padded_cell_bbox[0], padded_cell_bbox[0] + padded_cell_bbox[1]
-    bmin, bmax = cell_bbox[0], cell_bbox[0] + cell_bbox[1]
-    x, y, z = [np.unique(np.array([pbmin[i], bmin[i], bmax[i], pbmax[i]])) for i in range(3)]
+def cell_weights_trilinear(vmin, vmax, pvmin, pvmax):
+    dmin = vmin - pvmin
+    dmax = pvmax - vmax
+    x, y, z = [np.unique(np.array([pvmin[i], pvmin[i] + 2.0 * dmin[i], pvmax[i] - 2.0 * dmax[i], pvmax[i]]))
+               for i in range(3)]
     vals = np.zeros([x.shape[0], y.shape[0], z.shape[0]])
     xyz = (x, y, z)
 
@@ -192,7 +193,7 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
         if xyz[dim].shape[0] == 2:
             one_idxs.append([0, 1])
         elif xyz[dim].shape[0] == 3:
-            if padded_cell_bbox[0][dim] == cell_bbox[0][dim]:
+            if vmin[dim] == pvmin[dim]:
                 one_idxs.append([0, 1])
             else:
                 one_idxs.append([1, 2])
@@ -203,21 +204,18 @@ def cell_weights_trilinear(padded_cell_bbox, cell_bbox, voxel_size, total_bbox):
         for j in one_idxs[1]:
             for k in one_idxs[2]:
                 vals[i, j, k] = 1.0
+
     f_w = RegularGridInterpolator((x, y, z), vals)
 
-    padded_cell_vmin = torch.floor(pbmin / voxel_size).to(torch.int32)
-    padded_cell_vmax = torch.floor(pbmax / voxel_size).to(torch.int32)
-
-    psize = (padded_cell_vmax - padded_cell_vmin).numpy() * 1j
-    pmin = ((padded_cell_vmin + 0.5) * voxel_size).numpy()
-    pmax = ((padded_cell_vmax - 0.5) * voxel_size).numpy()
+    psize = (pvmax - pvmin).numpy()
+    pmin = (pvmin + 0.5).numpy()
+    pmax = (pvmax - 0.5).numpy()
     pts = np.stack([np.ravel(a) for a in
-                    np.mgrid[pmin[0]:pmax[0]:psize[0], pmin[1]:pmax[1]:psize[1], pmin[2]:pmax[2]:psize[2]]], axis=-1)
+                    np.mgrid[pmin[0]:pmax[0]:psize[0] * 1j,
+                             pmin[1]:pmax[1]:psize[1] * 1j,
+                             pmin[2]:pmax[2]:psize[2] * 1j]], axis=-1)
 
-    padded_cell_min = torch.floor((pbmin - total_bbox[0]) / voxel_size).to(torch.int32)
-    padded_cell_max = torch.floor((pbmax - total_bbox[0]) / voxel_size).to(torch.int32)
-    padded_cell_size = (padded_cell_vmax - padded_cell_vmin).numpy()
-    return torch.from_numpy(f_w(pts).reshape(padded_cell_size)), padded_cell_min, padded_cell_max
+    return torch.from_numpy(f_w(pts).reshape(psize))
 
 
 if __name__ == "__main__":
