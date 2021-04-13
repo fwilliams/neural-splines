@@ -94,9 +94,9 @@ where
 
 #### Reconstructing very large point clouds with `fit-grid.py`
 
-`fit-grid.py` fits an input point cloud in chunks using a different Neural Spline per chunk. This approach works well when the input point cloud is large or has a lot of geometric complexity. `fit-grid.py` takes the following arguments
+`fit-grid.py` fits an input point cloud in chunks using a different Neural Spline per chunk. This approach works well when the input point cloud is large or has a lot of geometric complexity. `fit-grid.py` takes the following *required* arguments 
 ```
-fit-grid.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS> --overlap <OVERLAP>
+fit-grid.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS>
 ```
 where
 * **`<INPUT_POINT_CLOUD>`** is a path to a PLY file containing 3D points and corresponding normals
@@ -108,7 +108,11 @@ where
 * **`<GRID_SIZE>`** is the number of voxel cells along the longest axis of the bounding box on which the reconstructed 
   function gets sampled. For example if `<GRID_SIZE>` is `128` and the bounding box of the input pointcloud has dimensions `[1, 0.5, 0.5]`, then we will sample the function on a `128x64x64` voxel grid before extracting a mesh.
 * **`<CELLS_PER_AXIS>`** is an integer specifying the number of chunks to use along each axis. E.g. if `<cells-per-axis>` is 8, we will reconstruct the surface using 8x8x8 chunks.
+
+Furthermore, `fit-grid.py` accepts the following *optional* arguments:
 * **`--overlap <OVERLAP>`** optionally specify the fraction by which cells overlap. The default value is 0.25. If this value is too small, there may be artifacts in the output at the boundary of cells. 
+* **`--weight-type <WEIGHT_TYPE>`** How to interpolate predictions in overlapping cells. Must be one of `'trilinear'` or 'none', where 'trilinear' interpolates using a partition of unity defined using a bicubic spline and 'none' does not interpolate overlapping cells. Default is `'trilinear'`.
+* **`--min-pts-per-cell <MIN_PTS_PER_CELL>`** Ignore cells with fewer points than this value. Default is 0.
   
 #### Additional arguments to `fit.py` and `fit-grid.py`
 Additionally, both `fit.py` and `fit-grid.py` accept the following optional arguments which can alter the behavior and performance of
