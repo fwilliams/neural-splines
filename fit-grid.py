@@ -178,9 +178,9 @@ def main():
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
 
-    from scipy.ndimage import binary_erosion
-    mc_mask = binary_erosion(out_mask.numpy())
-    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=mc_mask, spacing=voxel_size)
+    # from scipy.ndimage import binary_erosion
+    # mc_mask = binary_erosion(out_mask.numpy())
+    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
     pcu.save_mesh_vfn(args.out, v, f, n)
 
