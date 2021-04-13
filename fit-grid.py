@@ -125,6 +125,7 @@ def main():
 
     # Count the number of non-empty cells so we get a nice progress bar
     cell_count = 0
+    tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
     for cell_idx, cell_vmin, cell_vmax in voxel_chunks(out_grid_size, args.cells_per_axis):
         cell_vox_size = cell_vmax - cell_vmin
         cell_bbox = scaled_bbox[0] + cell_vmin * voxel_size, cell_vox_size * voxel_size
@@ -133,6 +134,7 @@ def main():
         mask_cell = points_in_bbox(x, cell_bbox)
         if mask_cell.sum() > max(args.min_pts_per_cell, 0):
             cell_count += 1
+        tqdm_bar.update(1)
 
     # Iterate over each grid cell
     tqdm_bar = tqdm.tqdm(total=cell_count)
