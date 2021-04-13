@@ -131,7 +131,7 @@ def main():
 
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
-        if mask_cell.sum() <= max(args.min_pts_per_cell, 0):
+        if mask_cell.sum() > max(args.min_pts_per_cell, 0):
             cell_count += 1
 
     # Iterate over each grid cell
@@ -146,7 +146,7 @@ def main():
         # If there are no points in this region, then skip it
         mask_cell = points_in_bbox(x, cell_bbox)
         if mask_cell.sum() <= max(args.min_pts_per_cell, 0):
-            tqdm_bar.update(1)
+            # tqdm_bar.update(1)
             continue
 
         # Amount of voxels by which to pad each cell in each direction
