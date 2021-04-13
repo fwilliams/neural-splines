@@ -150,8 +150,6 @@ def main():
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
 
-
-
         # Cell trilinear blending weights
         weights = cell_weights_trilinear(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax)
 
@@ -165,7 +163,6 @@ def main():
                                                 normalize=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
                                         cell_vox_min=cell_pvmin, cell_vox_max=cell_pvmax, print_message=False)
-        print("cell_recon.shape", cell_recon.shape)
 
         w_cell_recon = weights * cell_recon
         out_grid[cell_pvmin[0]:cell_pvmax[0], cell_pvmin[1]:cell_pvmax[1], cell_pvmin[2]:cell_pvmax[2]] += w_cell_recon
