@@ -186,4 +186,4 @@ def cell_weights_trilinear(vmin, vmax, pvmin, pvmax):
                              pmin[1]:pmax[1]:psize[1] * 1j,
                              pmin[2]:pmax[2]:psize[2] * 1j]], axis=-1)
 
-    return torch.from_numpy(f_w(pts).reshape(psize))
+    return torch.from_numpy(f_w(pts).reshape(psize)), pvmin, pvmax
