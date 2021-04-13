@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 
 
 def normalize_pointcloud_transform(x):
@@ -140,3 +141,49 @@ def voxel_chunks(grid_size, cells_per_axis):
                 vox_max = torch.round(current_vox_max).to(torch.int32)
 
                 yield (c_i, c_j, c_k), vox_min, vox_max
+
+
+def cell_weights_trilinear(vmin, vmax, pvmin, pvmax):
+    """
+    Returns a voxel grid of weights used to blend two adjacent cells together which overlap by some amount of voxels.
+    :param vmin: The minimum voxel indices for the cell
+    :param vmax: The maximum voxel indices for the cell
+    :param pvmin: The minimum voxel index for the padded cell
+    :param pvmax: The maximum voxel index for the padded cell
+    :return: A voxel grid of size (pvmin - pvmax) of trilinear weights used to interpolate neighboring cells
+    """
+    dmin = vmin - pvmin
+    dmax = pvmax - vmax
+    x, y, z = [np.unique(np.array([pvmin[i], pvmin[i] + 2.0 * dmin[i], pvmax[i] - 2.0 * dmax[i], pvmax[i]]))
+               for i in range(3)]
+    vals = np.zeros([x.shape[0], y.shape[0], z.shape[0]])
+    xyz = (x, y, z)
+
+    one_idxs = []
+    for dim in range(3):
+        if xyz[dim].shape[0] == 2:
+            one_idxs.append([0, 1])
+        elif xyz[dim].shape[0] == 3:
+            if vmin[dim] == pvmin[dim]:
+                one_idxs.append([0, 1])
+            else:
+                one_idxs.append([1, 2])
+        else:
+            one_idxs.append([1, 2])
+
+    for i in one_idxs[0]:
+        for j in one_idxs[1]:
+            for k in one_idxs[2]:
+                vals[i, j, k] = 1.0
+
+    f_w = RegularGridInterpolator((x, y, z), vals)
+
+    psize = (pvmax - pvmin).numpy()
+    pmin = (pvmin + 0.5).numpy()
+    pmax = (pvmax - 0.5).numpy()
+    pts = np.stack([np.ravel(a) for a in
+                    np.mgrid[pmin[0]:pmax[0]:psize[0] * 1j,
+                             pmin[1]:pmax[1]:psize[1] * 1j,
+                             pmin[2]:pmax[2]:psize[2] * 1j]], axis=-1)
+
+    return torch.from_numpy(f_w(pts).reshape(psize))

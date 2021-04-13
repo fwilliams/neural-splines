@@ -103,6 +103,26 @@ def _run_falkon_fit(x, y, penalty, num_ny, center_selector, kernel_type="neural-
     return model
 
 
+def get_weights(vmin, vmax, pvmin, pvmax, weight_type):
+    """
+    Get the per-voxel partition of unity weights for a cell when reconstructing on a grid of cells
+    :param vmin: Minimum voxel index for this cell
+    :param vmax: Maximum voxel index for this cell
+    :param pvmin: Minimum voxel index for the padded cell
+    :param pvmax: Maximum voxel index for the padded cell
+    :param weight_type: What kind of partition-of-unity to use
+    :return: A triple (weights, idxmin, idxmax) where weights is a (idxmax-idxmin)-shaped voxel grid and
+             idxmin and idxmax are 3-tensors indicating the index range in the output voxel grid which the
+             weights should correspond to
+    """
+    if weight_type == 'trilinear':
+        return cell_weights_trilinear(vmin, vmax, pvmin, pvmax)
+    elif weight_type == 'none':
+        return 1.0, vmin, vmax
+    else:
+        raise ValueError("Invalid weight_type, must be one of 'trilinear' or 'none'")
+
+
 def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     """
     Load a point cloud with normals, filtering out points whose normal has a magnitude below the given threshold.

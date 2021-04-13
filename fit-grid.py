@@ -7,9 +7,7 @@ import torch
 from skimage.measure import marching_cubes
 
 from neural_splines import load_point_cloud, point_cloud_bounding_box, fit_model_to_pointcloud, eval_model_on_grid, \
-    voxel_chunks, points_in_bbox, scale_bounding_box_diameter, affine_transform_pointcloud
-
-from scipy.interpolate import RegularGridInterpolator
+    voxel_chunks, points_in_bbox, affine_transform_pointcloud, get_weights
 
 
 def main():
@@ -35,6 +33,11 @@ def main():
     argparser.add_argument("--overlap", type=float, default=0.25,
                            help="By how much should each grid cell overlap as a fraction of the bounding "
                                 "box diagonal. Default is 0.25")
+    argparser.add_argument("--weight-type", type=str, default='trilinear',
+                           help="How to interpolate predictions in overlapping cells. Must be one of 'trilinear' "
+                                "or 'none', where 'trilinear' interpolates using a partition of unity defined using a"
+                                "bicubic spline and 'none' does not interpolate overlapping cells. "
+                                "Default is 'trilinear'.")
     argparser.add_argument("--min-pts-per-cell", type=int, default=0,
                            help="Ignore cells with fewer points than this value. Default is zero.")
 
@@ -134,13 +137,15 @@ def main():
             tqdm_bar.update(1)
             continue
 
-        # Amount of voxels to pad by per-cell and min/max indexes of the padded cell
+        # Amount of voxels by which to pad each cell in each direction
         cell_pad_vox = torch.round(0.5 * args.overlap * out_grid_size.to(torch.float64) / args.cells_per_axis)
-        cell_pad_amount = cell_pad_vox * voxel_size
+
+        # Minimum and maximum voxel indices of the padded cell
         cell_pvmin = torch.maximum(cell_vmin - cell_pad_vox, torch.zeros(3).to(cell_vmin)).to(torch.int32)
         cell_pvmax = torch.minimum(cell_vmax + cell_pad_vox, torch.tensor(out_grid.shape).to(cell_vmin)).to(torch.int32)
 
-        # Pad the cell slightly so boundaries agree
+        # Bounding box and point mask for the padded cell
+        cell_pad_amount = cell_pad_vox * voxel_size
         padded_cell_bbox = cell_bbox[0] - cell_pad_amount, cell_bbox[1] + 2.0 * cell_pad_amount
         mask_padded_cell = points_in_bbox(x, padded_cell_bbox)
 
@@ -150,8 +155,8 @@ def main():
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
 
-        # Cell trilinear blending weights
-        weights = cell_weights_trilinear(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax)
+        # Cell trilinear blending weights, and index range for which voxels to reconstruct
+        weights, idxmin, idxmax = get_weights(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax, args.weight_type)
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
@@ -162,58 +167,23 @@ def main():
                                                 verbosity_level=7 if not args.verbose else 0,
                                                 normalize=False)
         cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
-                                        cell_vox_min=cell_pvmin, cell_vox_max=cell_pvmax, print_message=False)
+                                        cell_vox_min=idxmin, cell_vox_max=idxmax, print_message=False)
 
         w_cell_recon = weights * cell_recon
-        out_grid[cell_pvmin[0]:cell_pvmax[0], cell_pvmin[1]:cell_pvmax[1], cell_pvmin[2]:cell_pvmax[2]] += w_cell_recon
+        out_grid[idxmin[0]:idxmax[0], idxmin[1]:idxmax[1], idxmin[2]:idxmax[2]] += w_cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
 
-    out_grid[np.logical_not(out_mask)] = 1.0
+    out_grid[torch.logical_not(out_mask)] = 1.0
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
 
-    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
+    from scipy.ndimage import binary_erosion
+    mc_mask = binary_erosion(out_mask.numpy())
+    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=mc_mask, spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
     pcu.save_mesh_vfn(args.out, v, f, n)
 
-
-def cell_weights_trilinear(vmin, vmax, pvmin, pvmax):
-    dmin = vmin - pvmin
-    dmax = pvmax - vmax
-    x, y, z = [np.unique(np.array([pvmin[i], pvmin[i] + 2.0 * dmin[i], pvmax[i] - 2.0 * dmax[i], pvmax[i]]))
-               for i in range(3)]
-    vals = np.zeros([x.shape[0], y.shape[0], z.shape[0]])
-    xyz = (x, y, z)
-
-    one_idxs = []
-    for dim in range(3):
-        if xyz[dim].shape[0] == 2:
-            one_idxs.append([0, 1])
-        elif xyz[dim].shape[0] == 3:
-            if vmin[dim] == pvmin[dim]:
-                one_idxs.append([0, 1])
-            else:
-                one_idxs.append([1, 2])
-        else:
-            one_idxs.append([1, 2])
-
-    for i in one_idxs[0]:
-        for j in one_idxs[1]:
-            for k in one_idxs[2]:
-                vals[i, j, k] = 1.0
-
-    f_w = RegularGridInterpolator((x, y, z), vals)
-
-    psize = (pvmax - pvmin).numpy()
-    pmin = (pvmin + 0.5).numpy()
-    pmax = (pvmax - 0.5).numpy()
-    pts = np.stack([np.ravel(a) for a in
-                    np.mgrid[pmin[0]:pmax[0]:psize[0] * 1j,
-                             pmin[1]:pmax[1]:psize[1] * 1j,
-                             pmin[2]:pmax[2]:psize[2] * 1j]], axis=-1)
-
-    return torch.from_numpy(f_w(pts).reshape(psize))
 
 
 if __name__ == "__main__":
