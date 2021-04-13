@@ -1,9 +1,10 @@
 import argparse
-import tqdm
 
 import numpy as np
 import point_cloud_utils as pcu
 import torch
+import tqdm
+from scipy.ndimage import binary_erosion
 from skimage.measure import marching_cubes
 
 from neural_splines import load_point_cloud, point_cloud_bounding_box, fit_model_to_pointcloud, eval_model_on_grid, \
@@ -178,9 +179,10 @@ def main():
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
 
-    # from scipy.ndimage import binary_erosion
-    # mc_mask = binary_erosion(out_mask.numpy())
-    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy(), spacing=voxel_size)
+    # Erode the mask so we don't get weird boundaries
+    eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))
+    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, spacing=voxel_size,
+                                gradient_direction='ascent')
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
     pcu.save_mesh_vfn(args.out, v, f, n)
 
