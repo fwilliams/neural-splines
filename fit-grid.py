@@ -114,7 +114,7 @@ def main():
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
     # Voxel grid to store the output
-    out_grid = torch.ones(*out_grid_size, dtype=torch.float32)
+    out_grid = torch.zeros(*out_grid_size, dtype=torch.float32)
     out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
@@ -169,6 +169,7 @@ def main():
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
         tqdm_bar.update(1)
 
+    out_grid[np.logical_not(out_mask)] = 1.0
     if args.save_grid:
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
 
