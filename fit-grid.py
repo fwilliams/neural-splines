@@ -125,9 +125,10 @@ def main():
 
     # Iterate over each grid cell
     tqdm_bar = tqdm.tqdm(total=args.cells_per_axis ** 3)
+    current_num_points = 0  # The number of points in this cell (used to log to the tqdm bar)
     for cell_idx, cell_vmin, cell_vmax in voxel_chunks(out_grid_size, args.cells_per_axis):
 
-        tqdm_bar.set_postfix({"Cell": str(cell_idx)})
+        tqdm_bar.set_postfix({"Cell": str(cell_idx), "Num Points": current_num_points})
         # Bounding box of the cell in world coordinates
         cell_vox_size = cell_vmax - cell_vmin
         cell_bbox = scaled_bbox[0] + cell_vmin * voxel_size, cell_vox_size * voxel_size
@@ -155,6 +156,9 @@ def main():
         x_cell = x[mask_padded_cell].clone()
         n_cell = n[mask_padded_cell].clone()
         x_cell = affine_transform_pointcloud(x_cell, tx)
+
+        current_num_points = x_cell.shape[0]
+        tqdm_bar.set_postfix({"Cell": str(cell_idx), "Num Points": current_num_points})
 
         # Cell trilinear blending weights, and index range for which voxels to reconstruct
         weights, idxmin, idxmax = get_weights(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax, args.weight_type)
