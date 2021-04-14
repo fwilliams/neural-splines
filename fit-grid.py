@@ -184,8 +184,8 @@ def main():
         np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
 
     # Erode the mask so we don't get weird boundaries
-    # eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))
-    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=out_mask.numpy().astype(np.bool), spacing=voxel_size,
+    eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))
+    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, spacing=voxel_size,
                                 gradient_direction='ascent')
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
     pcu.save_mesh_vfn(args.out, v, f, n)
