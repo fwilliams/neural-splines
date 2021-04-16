@@ -14,10 +14,6 @@ from neural_splines import load_point_cloud, point_cloud_bounding_box, fit_model
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
-    argparser.add_argument("eps", type=float,
-                           help="Perturbation amount for finite differencing. To approximate the gradient of the "
-                                "function, we sample points +/- eps along the normal direction. "
-                                "A reasonable value for this is half the minimum distance between any two points.")
     argparser.add_argument("num_nystrom_samples", type=int, default=-1,
                            help="Number of Nyström samples to use for kernel ridge regression. "
                                 "If negative, don't use Nyström sampling."
@@ -27,10 +23,14 @@ def main():
                                 "generally good depending on the complexity of the input shape.")
     argparser.add_argument("grid_size", type=int,
                            help="When reconstructing the mesh, use this many voxels along the longest side of the "
-                                "bounding box. Default is 128.")
+                                "bounding box.")
     argparser.add_argument("cells_per_axis", type=int,
                            help="Number of cells per axis to split the input along")
 
+    argparser.add_argument("--trim-distance", type=float, default=-1.0,
+                           help="If set to a positive value, trim vertices of the reconstructed mesh whose nearest "
+                                "point in the input is greater than this value. The units of this argument are voxels "
+                                "(where the grid_size determines the size of a voxel) Default is -1.0.")
     argparser.add_argument("--overlap", type=float, default=0.25,
                            help="By how much should each grid cell overlap as a fraction of the bounding "
                                 "box diagonal. Default is 0.25")
@@ -42,6 +42,12 @@ def main():
     argparser.add_argument("--min-pts-per-cell", type=int, default=0,
                            help="Ignore cells with fewer points than this value. Default is zero.")
 
+    argparser.add_argument("--eps", type=float, default=0.15,
+                           help="Perturbation amount for finite differencing in voxel units. i.e. we perturb points by "
+                                "eps times the diagonal length of a voxel "
+                                "(where the grid_size determines the size of a voxel). "
+                                "To approximate the gradient of the function, we sample points +/- eps "
+                                "along the normal direction.")
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
                                 " the diameter of the bounding box of the input points. Defaults is 1.1.")
@@ -164,8 +170,9 @@ def main():
         weights, idxmin, idxmax = get_weights(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax, args.weight_type)
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
+        eps_world_coords = args.eps * torch.norm(voxel_size).item()  # Size of perturbation in world coordinates
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
-                                                num_ny=args.num_nystrom_samples, eps=args.eps,
+                                                num_ny=args.num_nystrom_samples, eps=eps_world_coords,
                                                 kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
                                                 cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
                                                 outer_layer_variance=args.outer_layer_variance,
@@ -188,6 +195,15 @@ def main():
     v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, spacing=voxel_size,
                                 gradient_direction='ascent')
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
+
+    if args.trim_distance > 0.0:
+        nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy(), k=2)
+        nn_dist = nn_dist[:, 1]
+        trim_dist_world = args.trim_distance * torch.norm(voxel_size).item()  # Trim distance in world coordinates
+        f_mask = np.stack([nn_dist[f[:, i]] < trim_dist_world for i in range(f.shape[1])], axis=-1)
+        f_mask = np.all(f_mask, axis=-1)
+        f = f[f_mask]
+
     pcu.save_mesh_vfn(args.out, v, f, n)
 
 
