@@ -20,6 +20,10 @@ def main():
                            help="Trim vertices of the reconstructed mesh whose nearest "
                                 "point in the input is greater than this value. The units of this argument are voxels "
                                 "(where the cells_per_axis determines the size of a voxel) Default is -1.0.")
+    argparser.add_argument("--scale", type=float, default=1.1,
+                           help="Pad the bounding box of the input point cloud by a factor if --scale. "
+                                "i.e. the the diameter of the padded bounding box is --scale times bigger than the "
+                                "diameter of the bounding box of the input points. Defaults is 1.1.")
     argparser.add_argument("--out", type=str, default="trimmed.ply", help="Path to file to save trim mesh to.")
     argparser.add_argument("--use-abs-units", action="store_true",
                            help="If set, then use absolute units instead of voxel units for the trim distance.")
