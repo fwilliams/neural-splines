@@ -203,6 +203,7 @@ def main():
                                 gradient_direction='ascent')
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 
+    # Possibly trim regions which don't contain samples
     if args.trim > 0.0:
         # Trim distance in world coordinates
         if args.use_abs_units:

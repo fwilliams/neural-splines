@@ -22,6 +22,10 @@ def main():
                            help="When reconstructing the mesh, use this many voxels along the longest side of the "
                                 "bounding box. Default is 128.")
 
+    argparser.add_argument("--trim", type=float, default=-1.0,
+                           help="If set to a positive value, trim vertices of the reconstructed mesh whose nearest "
+                                "point in the input is greater than this value. The units of this argument are voxels "
+                                "(where the grid_size determines the size of a voxel) Default is -1.0.")
     argparser.add_argument("--eps", type=float, default=0.05,
                            help="Perturbation amount for finite differencing in voxel units. i.e. we perturb points by "
                                 "eps times the diagonal length of a voxel "
@@ -116,10 +120,23 @@ def main():
                                         cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
                                         outer_layer_variance=args.outer_layer_variance)
     recon = eval_model_on_grid(model, scaled_bbox, tx, out_grid_size)
-    v, f, n, c = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
+    v, f, n, _ = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 
-    pcu.write_ply(args.out, v.astype(np.float32), f.astype(np.int32), n.astype(np.float32), c.astype(np.float32))
+    # Possibly trim regions which don't contain samples
+    if args.trim > 0.0:
+        # Trim distance in world coordinates
+        if args.use_abs_units:
+            trim_dist_world = args.trim
+        else:
+            trim_dist_world = args.trim * torch.norm(voxel_size).item()
+        nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy(), k=2)
+        nn_dist = nn_dist[:, 1]
+        f_mask = np.stack([nn_dist[f[:, i]] < trim_dist_world for i in range(f.shape[1])], axis=-1)
+        f_mask = np.all(f_mask, axis=-1)
+        f = f[f_mask]
+
+    pcu.save_mesh_vfn(args.out, v.astype(np.float32), f.astype(np.int32), n.astype(np.float32))
     if args.save_grid:
         np.savez(args.out + ".grid", grid=recon.detach().cpu().numpy())
 
