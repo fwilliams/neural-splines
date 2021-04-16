@@ -42,7 +42,7 @@ def main():
     argparser.add_argument("--min-pts-per-cell", type=int, default=0,
                            help="Ignore cells with fewer points than this value. Default is zero.")
 
-    argparser.add_argument("--eps", type=float, default=0.15,
+    argparser.add_argument("--eps", type=float, default=0.05,
                            help="Perturbation amount for finite differencing in voxel units. i.e. we perturb points by "
                                 "eps times the diagonal length of a voxel "
                                 "(where the grid_size determines the size of a voxel). "
