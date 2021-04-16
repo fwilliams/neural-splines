@@ -11,10 +11,6 @@ from neural_splines import load_point_cloud, fit_model_to_pointcloud, eval_model
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("input_point_cloud", type=str, help="Path to the input point cloud to reconstruct.")
-    argparser.add_argument("eps", type=float,
-                           help="Perturbation amount for finite differencing. To approximate the gradient of the "
-                                "function, we sample points +/- eps along the normal direction. "
-                                "A reasonable value for this is half the minimum distance between any two points.")
     argparser.add_argument("num_nystrom_samples", type=int, default=-1,
                            help="Number of Nyström samples to use for kernel ridge regression. "
                                 "If negative, don't use Nyström sampling."
@@ -26,6 +22,12 @@ def main():
                            help="When reconstructing the mesh, use this many voxels along the longest side of the "
                                 "bounding box. Default is 128.")
 
+    argparser.add_argument("--eps", type=float, default=0.05,
+                           help="Perturbation amount for finite differencing in voxel units. i.e. we perturb points by "
+                                "eps times the diagonal length of a voxel "
+                                "(where the grid_size determines the size of a voxel). "
+                                "To approximate the gradient of the function, we sample points +/- eps "
+                                "along the normal direction.")
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
                                 " the diameter of the bounding box of the input points. Defaults is 1.1.")
@@ -69,6 +71,8 @@ def main():
     argparser.add_argument("--outer-layer-variance", type=float, default=1.0,
                            help="Variance of the outer layer of the neural network from which the neural "
                                 "spline kernel arises from. Default is 1.0.")
+    argparser.add_argument("--use-abs-units", action="store_true",
+                           help="If set, then use absolute units instead of voxel units for --eps and --trim.")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
     args = argparser.parse_args()
 
@@ -101,7 +105,13 @@ def main():
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
         x, n = torch.from_numpy(x), torch.from_numpy(n)
 
-    model, tx = fit_model_to_pointcloud(x, n, num_ny=args.num_nystrom_samples, eps=args.eps,
+    # Finite differencing epsilon in world units
+    if args.use_abs_units:
+        eps_world_coords = args.eps
+    else:
+        eps_world_coords = args.eps * torch.norm(voxel_size).item()
+
+    model, tx = fit_model_to_pointcloud(x, n, num_ny=args.num_nystrom_samples, eps=eps_world_coords,
                                         kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
                                         cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
                                         outer_layer_variance=args.outer_layer_variance)

@@ -27,7 +27,7 @@ def main():
     argparser.add_argument("cells_per_axis", type=int,
                            help="Number of cells per axis to split the input along")
 
-    argparser.add_argument("--trim-distance", type=float, default=-1.0,
+    argparser.add_argument("--trim", type=float, default=-1.0,
                            help="If set to a positive value, trim vertices of the reconstructed mesh whose nearest "
                                 "point in the input is greater than this value. The units of this argument are voxels "
                                 "(where the grid_size determines the size of a voxel) Default is -1.0.")
@@ -91,6 +91,8 @@ def main():
     argparser.add_argument("--outer-layer-variance", type=float, default=1.0,
                            help="Variance of the outer layer of the neural network from which the neural "
                                 "spline kernel arises from. Default is 1.0.")
+    argparser.add_argument("--use-abs-units", action="store_true",
+                           help="If set, then use absolute units instead of voxel units for --eps and --trim.")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
     args = argparser.parse_args()
 
@@ -169,8 +171,13 @@ def main():
         # Cell trilinear blending weights, and index range for which voxels to reconstruct
         weights, idxmin, idxmax = get_weights(cell_vmin, cell_vmax, cell_pvmin, cell_pvmax, args.weight_type)
 
+        # Finite differencing epsilon in world units
+        if args.use_abs_units:
+            eps_world_coords = args.eps
+        else:
+            eps_world_coords = args.eps * torch.norm(voxel_size).item()
+
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
-        eps_world_coords = args.eps * torch.norm(voxel_size).item()  # Size of perturbation in world coordinates
         cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
                                                 num_ny=args.num_nystrom_samples, eps=eps_world_coords,
                                                 kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
@@ -196,10 +203,14 @@ def main():
                                 gradient_direction='ascent')
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 
-    if args.trim_distance > 0.0:
+    if args.trim > 0.0:
+        # Trim distance in world coordinates
+        if args.use_abs_units:
+            trim_dist_world = args.trim
+        else:
+            trim_dist_world = args.trim * torch.norm(voxel_size).item()
         nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy(), k=2)
         nn_dist = nn_dist[:, 1]
-        trim_dist_world = args.trim_distance * torch.norm(voxel_size).item()  # Trim distance in world coordinates
         f_mask = np.stack([nn_dist[f[:, i]] < trim_dist_world for i in range(f.shape[1])], axis=-1)
         f_mask = np.all(f_mask, axis=-1)
         f = f[f_mask]
