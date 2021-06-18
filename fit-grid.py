@@ -88,9 +88,9 @@ def main():
     argparser.add_argument("--dtype", type=str, default="float64",
                            help="Scalar type of the data. Must be one of 'float32' or 'float64'. "
                                 "Warning: float32 may not work very well for complicated inputs.")
-    argparser.add_argument("--outer-layer-variance", type=float, default=1.0,
+    argparser.add_argument("--outer-layer-variance", type=float, default=0.001,
                            help="Variance of the outer layer of the neural network from which the neural "
-                                "spline kernel arises from. Default is 1.0.")
+                                "spline kernel arises from. Default is 0.001.")
     argparser.add_argument("--use-abs-units", action="store_true",
                            help="If set, then use absolute units instead of voxel units for --eps and --trim.")
     argparser.add_argument("--verbose", action="store_true", help="Spam your terminal with debug information")
