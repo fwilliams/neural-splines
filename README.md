@@ -117,7 +117,7 @@ Furthermore, `fit-grid.py` accepts the following *optional* arguments:
 Additionally, both `fit.py` and `fit-grid.py` accept the following optional arguments which can alter the behavior and performance of
 the fitting process:
   * **`--scale <SCALE>`**: Reconstruct the surface in a bounding box whose diameter is --scale times bigger than the diameter of the bounding box of the input points. Defaults is 1.1.
-  * **`--regularization <REGULARIZATION>`**: Regularization penalty for kernel ridge regression. Default is 1e-7.
+  * **`--regularization <REGULARIZATION>`**: Regularization penalty for kernel ridge regression. Default is 1e-10.
   * **`--nystrom-mode <NYSTROM_MODE>`**: How to generate nystrom samples. Default is 'blue-noise'. Must be one of
     - 'random': choose Nyström samples at random from the input
     - 'blue-noise': downsample the input with blue noise to get Nyström samples
