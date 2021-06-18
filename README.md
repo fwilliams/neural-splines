@@ -110,7 +110,7 @@ Furthermore, `fit-grid.py` accepts the following *optional* arguments:
 * **`--overlap <OVERLAP>`** optionally specify the fraction by which cells overlap. The default value is 0.25. If this value is too small, there may be artifacts in the output at the boundary of cells. 
 * **`--weight-type <WEIGHT_TYPE>`** How to interpolate predictions in overlapping cells. Must be one of `'trilinear'` or 'none', where 'trilinear' interpolates using a partition of unity defined using a bicubic spline and 'none' does not interpolate overlapping cells. Default is `'trilinear'`.
 * **`--min-pts-per-cell <MIN_PTS_PER_CELL>`** Ignore cells with fewer points than this value. Default is 0.
-  
+
 #### Additional arguments to `fit.py` and `fit-grid.py`
 Additionally, both `fit.py` and `fit-grid.py` accept the following optional arguments which can alter the behavior and performance of
 the fitting process:
@@ -133,6 +133,18 @@ the fitting process:
   * **`--dtype DTYPE`**: Scalar type of the data. Must be one of 'float32' or 'float64'. Warning: float32 only works for very simple inputs.
   * **`--outer-layer-variance <OUTER_LAYER_VARIANCE>`**: Variance of the outer layer of the neural network from which the neural spline kernel arises from. Default is 0.001.
   * **`--verbose`**: If set, spam your terminal with debug information
+
+#### Trimming Reconstructed Meshes
+Neural Splines can sometimes add surface sheets far away from input points, to remove these, we include a surface trimming script (similar to Poisson Surface Reconstruction), which trims mesh faces away from the input points. To trim a surface, simply run:
+```
+python trim-surface.py <INPUT_POINT_CLOUD> <RECONSTRUCTED_MESH> <GRID_SIZE> <DISTANCE_THRESHOLD> --out <OUT_FILE>
+```
+where:
+ * **`<INPUT_POINT_CLOUD>`** is a path to the input point cloud to the reconstruction algorithm
+ * **`<RECONSTRUCTED_MESH>`** is a path to the mesh reconstructed by neural splines
+ * **`<GRID_SIZE>`** is the size of the voxel grid used to reconstruct the mesh (the same value as the `<GRID_SIZE>` argument to `fit.py` or `fit-grid.py`)
+ * **`<DISTANCE_THRESHOLD>`** is the distance (in voxels) above which faces should be discarded (e.g. passing 2.5 will discard any surface which is greater than 3 voxels away from an input point.
+ * **`--out <OUT_FILE>`** is an optional path to save the trimmed mesh to. By default it is `trimmed.ply`.
 
 
 ## Using Neural Splines in Python
