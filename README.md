@@ -77,7 +77,7 @@ There are two scripts in this repository to fit surfaces from the command line:
 
 `fit.py` fits an input point cloud using a single Neural Spline. This approach works best for relatively small inputs which don't have too much geometric complexity. `fit.py` takes least the following arguments
 ```
-fit.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE>
+fit.py <INPUT_POINT_CLOUD> <NUM_NYSTROM_SAMPLES> <GRID_SIZE>
 ```
 where
 * **`<INPUT_POINT_CLOUD>`** is a path to a PLY file containing 3D points and corresponding normals
@@ -96,13 +96,10 @@ where
 
 `fit-grid.py` fits an input point cloud in chunks using a different Neural Spline per chunk. This approach works well when the input point cloud is large or has a lot of geometric complexity. `fit-grid.py` takes the following *required* arguments 
 ```
-fit-grid.py <INPUT_POINT_CLOUD> <EPS> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS>
+fit-grid.py <INPUT_POINT_CLOUD> <NUM_NYSTROM_SAMPLES> <GRID_SIZE> <CELLS_PER_AXIS>
 ```
 where
 * **`<INPUT_POINT_CLOUD>`** is a path to a PLY file containing 3D points and corresponding normals
-* **`<EPS>`** is a spacing parameter used for finite difference approximation of the gradient term in the kernel. 
-  To capture all surface details this should be less than half the smallest distance between two points. 
-  Generally setting this to values smaller than `0.5/grid_size` is reasonable for this parameter
 * **`<NUM_NYSTROM_SAMPLES>`** is the number of points to use as basis centers within each chunk. A larger number of Nystrom samples will yield 
   a more accurate reconstruction but increase runtime and CPU memory usage.
 * **`<GRID_SIZE>`** is the number of voxel cells along the longest axis of the bounding box on which the reconstructed 
@@ -123,6 +120,8 @@ the fitting process:
     - 'random': choose Nyström samples at random from the input
     - 'blue-noise': downsample the input with blue noise to get Nyström samples
     - 'k-means': use k-means  clustering to generate Nyström samples
+  * **`--trim <TRIM>`**: If set to a positive value, trim vertices of the reconstructed mesh whose nearest point in the input is greater than this value. The units of this argument are voxels (where the grid_size determines the size of a voxel) Default is -1.0.
+  * **`--eps <EPS>`**:  Perturbation amount for finite differencing in voxel units. i.e. we perturb points by eps times the diagonal length of a voxel (where the grid_size determines the size of a voxel). To approximate the gradient of the function, we sample points +/- eps along the normal direction.
   * **`--voxel-downsample-threshold <VOXEL_DOWNSAMPLE_THRESHOLD>`**: If the number of input points is greater than this value, downsample it by averaging points and normals within voxels on a grid. The size of the voxel grid is determined via the --grid-size argument. Default is 150_000.NOTE: This can massively  speed up reconstruction for very large point clouds and generally won't throw away any details.
   * **`--kernel <KERNEL>`**: Which kernel to use. Must be one of 'neural-spline', 'spherical-laplace', or 'linear-angle'. Default is 'neural-spline'.NOTE: The spherical laplace is a good approximation to the neural tangent kernel (see [this paper](https://arxiv.org/pdf/2007.01580.pdf) for details)
   * **`--seed <SEED>`**: Random number generator seed to use.
@@ -132,7 +131,7 @@ the fitting process:
   * **`--cg-max-iters <CG_MAX_ITERS>`**: Maximum number of conjugate gradient iterations. Default is 20.
   * **`--cg-stop-thresh <CG_STOP_THRESH>`**: Stop threshold for the conjugate gradient algorithm. Default is 1e-5.
   * **`--dtype DTYPE`**: Scalar type of the data. Must be one of 'float32' or 'float64'. Warning: float32 only works for very simple inputs.
-  * **`--outer-layer-variance <OUTER_LAYER_VARIANCE>`**: Variance of the outer layer of the neural network from which the neural spline kernel arises from. Default is 1.0.
+  * **`--outer-layer-variance <OUTER_LAYER_VARIANCE>`**: Variance of the outer layer of the neural network from which the neural spline kernel arises from. Default is 0.001.
   * **`--verbose`**: If set, spam your terminal with debug information
 
 
