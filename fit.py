@@ -35,8 +35,8 @@ def main():
     argparser.add_argument("--scale", type=float, default=1.1,
                            help="Reconstruct the surface in a bounding box whose diameter is --scale times bigger than"
                                 " the diameter of the bounding box of the input points. Defaults is 1.1.")
-    argparser.add_argument("--regularization", type=float, default=1e-7,
-                           help="Regularization penalty for kernel ridge regression. Default is 1e-7.")
+    argparser.add_argument("--regularization", type=float, default=1e-10,
+                           help="Regularization penalty for kernel ridge regression. Default is 1e-10.")
     argparser.add_argument("--nystrom-mode", type=str, default="blue-noise",
                            help="How to generate nystrom samples. Default is 'k-means'. Must be one of "
                                 "(1) 'random': choose Nyström samples at random from the input, "
