@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import point_cloud_utils as pcu
 import torch
+import torch.nn.functional as nnf
 from skimage.measure import marching_cubes
 
 from neural_splines import load_point_cloud, fit_model_to_pointcloud, eval_model_on_grid, point_cloud_bounding_box
@@ -22,6 +23,8 @@ def main():
                            help="When reconstructing the mesh, use this many voxels along the longest side of the "
                                 "bounding box. Default is 128.")
 
+    argparser.add_argument("--colors", action="store_true", help="If the input point cloud has colors, then "
+                                                                 "reconstruct a mesh with colors.")
     argparser.add_argument("--trim", type=float, default=-1.0,
                            help="If set to a positive value, trim vertices of the reconstructed mesh whose nearest "
                                 "point in the input is greater than this value. The units of this argument are voxels "
@@ -95,7 +98,11 @@ def main():
     np.random.seed(seed)
     print("Using random seed", seed)
 
-    x, n = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    x, n, c = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    if not args.colors:
+        c = None
+    elif c is None:
+        print("Warning: you passed in --colors, but input point cloud does not have colors")
 
     scaled_bbox = point_cloud_bounding_box(x, args.scale)
     out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
@@ -104,10 +111,11 @@ def main():
     # Downsample points to grid resolution if there are enough points
     if x.shape[0] > args.voxel_downsample_threshold:
         print("Downsampling input point cloud to voxel resolution.")
-        x, n, _ = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
+        x, n, c = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
+                                                        c.numpy() if c is not None else None,
                                                         min_bound=scaled_bbox[0],
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
-        x, n = torch.from_numpy(x), torch.from_numpy(n)
+        x, n, c = torch.from_numpy(x), torch.from_numpy(n), torch.from_numpy(c) if c is not None else None
 
     # Finite differencing epsilon in world units
     if args.use_abs_units:
@@ -115,12 +123,23 @@ def main():
     else:
         eps_world_coords = args.eps * torch.norm(voxel_size).item()
 
-    model, tx = fit_model_to_pointcloud(x, n, num_ny=args.num_nystrom_samples, eps=eps_world_coords,
+    model, tx = fit_model_to_pointcloud(x, n, c, num_ny=args.num_nystrom_samples, eps=eps_world_coords,
                                         kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
                                         cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
                                         outer_layer_variance=args.outer_layer_variance)
-    recon = eval_model_on_grid(model, scaled_bbox, tx, out_grid_size)
-    v, f, n, _ = marching_cubes(recon.numpy(), level=0.0, spacing=voxel_size)
+    recon_occ, recon_clr = eval_model_on_grid(model, scaled_bbox, tx, out_grid_size)
+    v, f, n, _ = marching_cubes(recon_occ.numpy(), level=0.0, gradient_direction='ascent')
+    if c is not None:
+        grid_size = [recon_occ.shape[i] - 1.0 for i in range(len(recon_occ.shape))]
+        pts_reshape = torch.from_numpy(v / np.array(grid_size)).to(recon_occ)
+        pts_reshape -= 0.5
+        pts_reshape *= 2.0
+        pts_reshape = pts_reshape.view(1, 1, 1, pts_reshape.shape[0], pts_reshape.shape[1])  # [1, 1, 1, N, 3]
+        grid_reshape = recon_clr.permute(3, 2, 1, 0).unsqueeze(0)  # [1, C, W, H, D]
+        c = nnf.grid_sample(grid_reshape, pts_reshape, padding_mode="border").squeeze().numpy().T
+
+    v = np.ascontiguousarray(v)
+    v *= voxel_size.numpy()
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 
     # Possibly trim regions which don't contain samples
@@ -130,15 +149,15 @@ def main():
             trim_dist_world = args.trim
         else:
             trim_dist_world = args.trim * torch.norm(voxel_size).item()
-        nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy(), k=2)
+        nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy().astype(v.dtype), k=2)
         nn_dist = nn_dist[:, 1]
         f_mask = np.stack([nn_dist[f[:, i]] < trim_dist_world for i in range(f.shape[1])], axis=-1)
         f_mask = np.all(f_mask, axis=-1)
         f = f[f_mask]
 
-    pcu.save_mesh_vfn(args.out, v.astype(np.float32), f.astype(np.int32), n.astype(np.float32))
+    pcu.save_mesh_vfnc(args.out, v.astype(np.float32), f.astype(np.int32), -n.astype(np.float32), c.astype(np.float32))
     if args.save_grid:
-        np.savez(args.out + ".grid", grid=recon.detach().cpu().numpy(), bbox=[b.numpy() for b in scaled_bbox])
+        np.savez(args.out + ".grid", grid=recon_occ.detach().cpu().numpy(), bbox=[b.numpy() for b in scaled_bbox])
 
     if args.save_points:
         x_ny = model.ny_points_[:, :3] if model.ny_points_ is not None else None

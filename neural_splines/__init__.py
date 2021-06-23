@@ -77,7 +77,7 @@ def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1
     return x_ny, center_selector, ny_count
 
 
-def _run_falkon_fit(x, y, penalty, num_ny, center_selector, kernel_type="neural-spline",
+def _run_falkon_fit(x, y, penalty, num_ny, center_selector, y_colors=None, kernel_type="neural-spline",
                     maxiters=20, stop_thresh=1e-7, variance=1.0, falkon_opts=None, verbosity_level=1):
 
     if falkon_opts is None:
@@ -116,6 +116,10 @@ def _run_falkon_fit(x, y, penalty, num_ny, center_selector, kernel_type="neural-
     model = falkon.Falkon(kernel=kernel, penalty=penalty, M=num_ny, options=falkon_opts, maxiter=maxiters,
                           center_selection=center_selector)
 
+    # Handle colors if they are passed in
+    if y_colors is not None:
+        y = torch.cat([y.unsqueeze(-1), y_colors], dim=-1)
+
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
         model.fit(x, y)
@@ -152,9 +156,10 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     :param dtype: The output dtype of the tensors returned
     :return: A pair v, n,  where v is a an [N, 3]-shaped tensor of points, n is a [N, 3]-shaped tensor of unit normals
     """
-    v, _, n = pcu.load_mesh_vfn(filename, dtype=np.float64)
+    v, n, c = pcu.load_mesh_vnc(filename, dtype=np.float64)
     v, idx, _ = pcu.deduplicate_point_cloud(v, 1e-15, return_index=True)  # Deduplicate point cloud when loading it
     n = n[idx]
+    c = c[idx]
 
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
     # We use this mask to remove bad vertices
@@ -165,10 +170,13 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     n = n[mask].astype(np.float64)
     n /= np.linalg.norm(n, axis=-1, keepdims=True)
 
-    return torch.from_numpy(x).to(dtype), torch.from_numpy(n).to(dtype)
+    if c is not None:
+        c = torch.from_numpy(c[mask]).to(dtype)
+
+    return torch.from_numpy(x).to(dtype), torch.from_numpy(n).to(dtype), c
 
 
-def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
+def fit_model_to_pointcloud(x, n, c, num_ny, eps, kernel='neural-spline',
                             reg=1e-7, ny_mode='blue-noise',
                             cg_stop_thresh=1e-5, cg_max_iters=20,
                             outer_layer_variance=1.0,
@@ -178,6 +186,7 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
     Fit a kernel to the point cloud with points x and normals n.
     :param x: A tensor of 3D points with shape [N, 3]
     :param n: A tensor of unit normals with shape [N, 3]
+    :param c: An optional [N, 3]or [N, 4] shaped tensor of RGB or RGBA values
     :param num_ny: The number of Nystrom samples to use. If negative, don't use Nyström sampling.
     :param ny_mode: How to generate nystrom samples. Must be one of (1) 'random', (2) 'blue-noise', or (3) 'k-means'.
     :param eps: Finite differencing coefficient used to approximate the gradient by perturbing points by this
@@ -195,7 +204,7 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
              You *must* apply this transformation to points before evaluating the model.
              This transformation is represented as a tuple (t, s) where t is a translation and s is scale.
     """
-    x, y = triple_points_along_normals(x, n, eps, homogeneous=False)
+    x, y, c = triple_points_along_normals(x, n, c, eps, homogeneous=False)
 
     if normalize:
         tx = normalize_pointcloud_transform(x)
@@ -208,7 +217,7 @@ def fit_model_to_pointcloud(x, n, num_ny, eps, kernel='neural-spline',
     x = torch.cat([x, torch.ones(x.shape[0], 1).to(x)], dim=-1)
 
     model = _run_falkon_fit(x, y, reg, ny_count, center_selector,
-                            maxiters=cg_max_iters, stop_thresh=cg_stop_thresh,
+                            y_colors=c, maxiters=cg_max_iters, stop_thresh=cg_stop_thresh,
                             kernel_type=kernel, variance=outer_layer_variance,
                             verbosity_level=verbosity_level, falkon_opts=custom_falkon_opts)
 
@@ -258,12 +267,21 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
     xgrid = torch.from_numpy(xgrid).to(model.alpha_.dtype)
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(model.alpha_.dtype)
 
-    ygrid = model.predict(xgrid).reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
+    ygrid = model.predict(xgrid)
+
+    torch.save((ygrid.detach().cpu(), cell_vox_size.astype(np.int)), "debug-me.pth")
+    if ygrid.shape[-1] > 1:
+        grid_shape = tuple(cell_vox_size.astype(np.int))
+        cgrid = torch.stack(
+            [ygrid[..., i+1].contiguous().reshape(grid_shape) for i in range(ygrid.shape[-1] - 1)], dim=-1)
+        ygrid = ygrid[..., 0].contiguous().reshape(grid_shape).detach().cpu()
+    else:
+        cgrid = None
 
     if print_message:
         print(f"Evaluated model in {time.time() - eval_start_time}s.")
 
-    return ygrid
+    return ygrid, cgrid
 
 
 

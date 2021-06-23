@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import point_cloud_utils as pcu
 import torch
+import torch.nn.functional as nnf
 import tqdm
 from scipy.ndimage import binary_erosion
 from skimage.measure import marching_cubes
@@ -27,6 +28,8 @@ def main():
     argparser.add_argument("cells_per_axis", type=int,
                            help="Number of cells per axis to split the input along")
 
+    argparser.add_argument("--colors", action="store_true", help="If the input point cloud has colors, then "
+                                                                 "reconstruct a mesh with colors.")
     argparser.add_argument("--trim", type=float, default=-1.0,
                            help="If set to a positive value, trim vertices of the reconstructed mesh whose nearest "
                                 "point in the input is greater than this value. The units of this argument are voxels "
@@ -111,7 +114,11 @@ def main():
     np.random.seed(seed)
     print("Using random seed", seed)
 
-    x, n = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    x, n, c = load_point_cloud(args.input_point_cloud, dtype=dtype)
+    if not args.colors:
+        c = None
+    elif c is None:
+        print("Warning: you passed in --colors, but input point cloud does not have colors")
 
     scaled_bbox = point_cloud_bounding_box(x, args.scale)
     out_grid_size = torch.round(scaled_bbox[1] / scaled_bbox[1].max() * args.grid_size).to(torch.int32)
@@ -120,14 +127,20 @@ def main():
     # Downsample points to grid resolution if there are enough points
     if x.shape[0] > args.voxel_downsample_threshold:
         print("Downsampling input point cloud to voxel resolution.")
-        x, n, _ = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
+        x, n, c = pcu.downsample_point_cloud_voxel_grid(voxel_size, x.numpy(), n.numpy(),
+                                                        c.numpy() if c is not None else None,
                                                         min_bound=scaled_bbox[0],
                                                         max_bound=scaled_bbox[0] + scaled_bbox[1])
-        x, n = torch.from_numpy(x), torch.from_numpy(n)
+        x, n, c = torch.from_numpy(x), torch.from_numpy(n), torch.from_numpy(c) if c is not None else None
 
     # Voxel grid to store the output
     out_grid = torch.zeros(*out_grid_size, dtype=torch.float32)
     out_mask = torch.zeros(*out_grid_size, dtype=torch.bool)
+    if c is not None:
+        color_grid_size = [g.item() for g in out_grid_size] + [c.shape[-1]]
+        out_color = torch.zeros(*color_grid_size, dtype=torch.float32)
+    else:
+        out_color = None
 
     print(f"Fitting {x.shape[0]} points using {args.cells_per_axis ** 3} cells")
 
@@ -163,6 +176,10 @@ def main():
         tx = -padded_cell_bbox[0] - 0.5 * padded_cell_bbox[1], 1.0 / torch.max(padded_cell_bbox[1])
         x_cell = x[mask_padded_cell].clone()
         n_cell = n[mask_padded_cell].clone()
+        if c is not None:
+            c_cell = c[mask_padded_cell].clone()
+        else:
+            c_cell = None
         x_cell = affine_transform_pointcloud(x_cell, tx)
 
         current_num_points = x_cell.shape[0]
@@ -178,19 +195,23 @@ def main():
             eps_world_coords = args.eps * torch.norm(voxel_size).item()
 
         # Fit the model and evaluate it on the subset of voxels corresponding to this cell
-        cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell,
+        cell_model, _ = fit_model_to_pointcloud(x_cell, n_cell, c_cell,
                                                 num_ny=args.num_nystrom_samples, eps=eps_world_coords,
                                                 kernel=args.kernel, reg=args.regularization, ny_mode=args.nystrom_mode,
                                                 cg_max_iters=args.cg_max_iters, cg_stop_thresh=args.cg_stop_thresh,
                                                 outer_layer_variance=args.outer_layer_variance,
                                                 verbosity_level=7 if not args.verbose else 0,
                                                 normalize=False)
-        cell_recon = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
-                                        cell_vox_min=idxmin, cell_vox_max=idxmax, print_message=False)
+        cell_recon, cell_color = eval_model_on_grid(cell_model, scaled_bbox, tx, out_grid_size,
+                                                    cell_vox_min=idxmin, cell_vox_max=idxmax, print_message=False)
 
         w_cell_recon = weights * cell_recon
         out_grid[idxmin[0]:idxmax[0], idxmin[1]:idxmax[1], idxmin[2]:idxmax[2]] += w_cell_recon
         out_mask[cell_vmin[0]:cell_vmax[0], cell_vmin[1]:cell_vmax[1], cell_vmin[2]:cell_vmax[2]] = True
+
+        if c is not None:
+            w_cell_color = weights.unsqueeze(-1) * cell_color
+            out_color[idxmin[0]:idxmax[0], idxmin[1]:idxmax[1], idxmin[2]:idxmax[2]] += w_cell_color
         tqdm_bar.update(1)
 
     out_grid[torch.logical_not(out_mask)] = 1.0
@@ -200,8 +221,18 @@ def main():
 
     # Erode the mask so we don't get weird boundaries
     eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))
-    v, f, n, c = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, spacing=voxel_size,
-                                gradient_direction='ascent')
+    v, f, n, _ = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, gradient_direction='ascent')
+    if c is not None:
+        grid_size = [out_grid.shape[i] - 1.0 for i in range(len(out_grid.shape))]
+        pts_reshape = torch.from_numpy(v / np.array(grid_size)).to(out_grid)
+        pts_reshape -= 0.5
+        pts_reshape *= 2.0
+        pts_reshape = pts_reshape.view(1, 1, 1, pts_reshape.shape[0], pts_reshape.shape[1])  # [1, 1, 1, N, 3]
+        grid_reshape = out_color.permute(3, 2, 1, 0).unsqueeze(0)  # [1, C, W, H, D]
+        c = nnf.grid_sample(grid_reshape, pts_reshape, padding_mode="border").squeeze().numpy().T
+
+    v = np.ascontiguousarray(v)
+    v *= voxel_size.numpy()
     v += scaled_bbox[0].numpy() + 0.5 * voxel_size.numpy()
 
     # Possibly trim regions which don't contain samples
@@ -217,7 +248,7 @@ def main():
         f_mask = np.all(f_mask, axis=-1)
         f = f[f_mask]
 
-    pcu.save_mesh_vfn(args.out, v, f, n)
+    pcu.save_mesh_vfnc(args.out, v, f, -n, c)
 
 
 if __name__ == "__main__":
