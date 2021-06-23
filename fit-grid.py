@@ -195,7 +195,8 @@ def main():
 
     out_grid[torch.logical_not(out_mask)] = 1.0
     if args.save_grid:
-        np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy())
+        np.savez(args.out + ".grid", grid=out_grid.detach().cpu().numpy(), mask=out_mask.detach().cpu().numpy(),
+                 bbox=scaled_bbox)
 
     # Erode the mask so we don't get weird boundaries
     eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))

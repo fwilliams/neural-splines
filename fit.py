@@ -138,7 +138,7 @@ def main():
 
     pcu.save_mesh_vfn(args.out, v.astype(np.float32), f.astype(np.int32), n.astype(np.float32))
     if args.save_grid:
-        np.savez(args.out + ".grid", grid=recon.detach().cpu().numpy())
+        np.savez(args.out + ".grid", grid=recon.detach().cpu().numpy(), bbox=scaled_bbox)
 
     if args.save_points:
         x_ny = model.ny_points_[:, :3] if model.ny_points_ is not None else None
