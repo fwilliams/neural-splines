@@ -60,8 +60,8 @@ You will also need to build the following dependencies from source. The easiest 
 
 1. Download and unzip the [example point clouds here](http://storage.googleapis.com/local-implicit-grids/demo_data.zip)
 2. Unzip the file, in the directory of this repository, which should produce a directory named `demo_data`
-3. Run `python fit.py demo_data/bunny.ply 0.005 10_000 128` On the first run this will fail (see above, just rerun it). On the second run it will compile some kernels and then produce a file called `recon.ply` which should be a reconstructed Stanford Bunny. The image below shows the input points and reconstruction for the bunny,
-5. Run `python fit-grid.py demo_data/living_room_33_500_per_m2.ply 0.005 10_000 512 8` which will produce another `recon.ply` mesh, this time of a full room as shown below.
+3. Run `python fit.py demo_data/bunny.ply 10_000 128` On the first run this will fail (see above, just rerun it). On the second run it will compile some kernels and then produce a file called `recon.ply` which should be a reconstructed Stanford Bunny. The image below shows the input points and reconstruction for the bunny,
+5. Run `python fit-grid.py demo_data/living_room_33_500_per_m2.ply 10_000 512 8` which will produce another `recon.ply` mesh, this time of a full room as shown below.
 <p align="center">
     <span>
         <img src="imgs/bunny.png" alt="A reconstructed Stanford Bunny" width="33%">
