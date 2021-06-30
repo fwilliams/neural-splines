@@ -290,7 +290,6 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
     xgrid = torch.cat([xgrid, torch.ones(xgrid.shape[0], 1).to(xgrid)], dim=-1).to(model.alpha_.dtype)
 
     ygrid = model.predict(xgrid)
-    print(ygrid.shape)
     if ygrid.shape[-1] > 1 and len(ygrid.shape) > 1:
         grid_shape = tuple(cell_vox_size.astype(np.int))
         cgrid = torch.stack(
@@ -298,6 +297,7 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
         ygrid = ygrid[..., 0].contiguous().reshape(grid_shape).detach().cpu()
     else:
         cgrid = None
+        ygrid = ygrid.reshape(tuple(cell_vox_size.astype(np.int))).detach().cpu()
 
     if print_message:
         print(f"Evaluated model in {time.time() - eval_start_time}s.")
