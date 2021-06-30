@@ -4,6 +4,7 @@ import warnings
 import point_cloud_utils as pcu
 
 import falkon
+from falkon.utils.tensor_helpers import create_same_stride
 from .falkon_kernels import NeuralSplineKernel, LaplaceKernelSphere, LinearAngleKernel
 from .geometry import *
 from .kmeans import kmeans
@@ -11,6 +12,26 @@ from .kmeans import kmeans
 _VERBOSITY_LEVEL_DEBUG = 0
 _VERBOSITY_LEVEL_INFO = 1
 _VERBOSITY_LEVEL_SILENT = 5
+
+
+class FixedIndexSelector(falkon.center_selection.CenterSelector):
+    def __init__(self, idx, random_gen=None):
+        super().__init__(random_gen)
+        self.idx = idx
+
+    def select(self, X, Y, M):
+        Xc = create_same_stride((M, X.shape[1]), other=X, dtype=X.dtype, device=X.device,
+                                pin_memory=False)
+        th_idx = torch.from_numpy(self.idx.astype(np.long)).to(X.device)
+        torch.index_select(X, dim=0, index=th_idx, out=Xc)
+
+        if Y is not None:
+            Yc = create_same_stride((M, Y.shape[1]), other=Y, dtype=Y.dtype, device=Y.device,
+                                    pin_memory=False)
+            th_idx = torch.from_numpy(self.idx.astype(np.long)).to(Y.device)
+            torch.index_select(Y, dim=0, index=th_idx, out=Yc)
+            return Xc, Yc
+        return Xc
 
 
 def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1):
@@ -41,7 +62,7 @@ def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1
         x_ny = x[ny_idx]
         x_ny = torch.cat([x_ny, torch.ones(x_ny.shape[0], 1).to(x_ny)], dim=-1)
         ny_count = x_ny.shape[0]
-        center_selector = falkon.center_selection.FixedSelector(centers=x_ny, y_centers=None)
+        center_selector = FixedIndexSelector(idx=ny_idx)
     elif sampling_method == 'k-means':
         if verbosity_level <= _VERBOSITY_LEVEL_INFO:
             print("Generating k-means Nyström samples.")
