@@ -242,7 +242,7 @@ def main():
             trim_dist_world = args.trim
         else:
             trim_dist_world = args.trim * torch.norm(voxel_size).item()
-        nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy(), k=2)
+        nn_dist, _ = pcu.k_nearest_neighbors(v, x.numpy().astype(v.dtype), k=2)
         nn_dist = nn_dist[:, 1]
         f_mask = np.stack([nn_dist[f[:, i]] < trim_dist_world for i in range(f.shape[1])], axis=-1)
         f_mask = np.all(f_mask, axis=-1)
