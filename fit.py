@@ -3,10 +3,10 @@ import argparse
 import numpy as np
 import point_cloud_utils as pcu
 import torch
-import torch.nn.functional as nnf
 from skimage.measure import marching_cubes
 
-from neural_splines import load_point_cloud, fit_model_to_pointcloud, eval_model_on_grid, point_cloud_bounding_box
+from neural_splines import load_point_cloud, fit_model_to_pointcloud, eval_model_on_grid, point_cloud_bounding_box, \
+    sample_grid_trilinear
 
 
 def main():
@@ -130,13 +130,7 @@ def main():
     recon_occ, recon_clr = eval_model_on_grid(model, scaled_bbox, tx, out_grid_size)
     v, f, n, _ = marching_cubes(recon_occ.numpy(), level=0.0, gradient_direction='ascent')
     if c is not None:
-        grid_size = [recon_occ.shape[i] - 1.0 for i in range(len(recon_occ.shape))]
-        pts_reshape = torch.from_numpy(v / np.array(grid_size)).to(recon_occ)
-        pts_reshape -= 0.5
-        pts_reshape *= 2.0
-        pts_reshape = pts_reshape.view(1, 1, 1, pts_reshape.shape[0], pts_reshape.shape[1])  # [1, 1, 1, N, 3]
-        grid_reshape = recon_clr.permute(3, 2, 1, 0).unsqueeze(0)  # [1, C, W, H, D]
-        c = nnf.grid_sample(grid_reshape, pts_reshape, padding_mode="border").squeeze().numpy().T
+        c = sample_grid_trilinear(v, recon_clr)
 
     v = np.ascontiguousarray(v)
     v *= voxel_size.numpy()

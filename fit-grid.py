@@ -9,7 +9,7 @@ from scipy.ndimage import binary_erosion
 from skimage.measure import marching_cubes
 
 from neural_splines import load_point_cloud, point_cloud_bounding_box, fit_model_to_pointcloud, eval_model_on_grid, \
-    voxel_chunks, points_in_bbox, affine_transform_pointcloud, get_weights
+    voxel_chunks, points_in_bbox, affine_transform_pointcloud, get_weights, sample_grid_trilinear
 
 
 def main():
@@ -223,13 +223,7 @@ def main():
     eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))
     v, f, n, _ = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, gradient_direction='ascent')
     if c is not None:
-        grid_size = [out_grid.shape[i] - 1.0 for i in range(len(out_grid.shape))]
-        pts_reshape = torch.from_numpy(v / np.array(grid_size)).to(out_grid)
-        pts_reshape -= 0.5
-        pts_reshape *= 2.0
-        pts_reshape = pts_reshape.view(1, 1, 1, pts_reshape.shape[0], pts_reshape.shape[1])  # [1, 1, 1, N, 3]
-        grid_reshape = out_color.permute(3, 2, 1, 0).unsqueeze(0)  # [1, C, W, H, D]
-        c = nnf.grid_sample(grid_reshape, pts_reshape, padding_mode="border").squeeze().numpy().T
+        c = sample_grid_trilinear(v, out_color)
 
     v = np.ascontiguousarray(v)
     v *= voxel_size.numpy()

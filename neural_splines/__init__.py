@@ -3,6 +3,7 @@ import warnings
 
 import point_cloud_utils as pcu
 
+import torch.nn.functional as nnf
 import falkon
 from falkon.utils.tensor_helpers import create_same_stride
 from .falkon_kernels import NeuralSplineKernel, LaplaceKernelSphere, LinearAngleKernel
@@ -32,6 +33,23 @@ class FixedIndexSelector(falkon.center_selection.CenterSelector):
             torch.index_select(Y, dim=0, index=th_idx, out=Yc)
             return Xc, Yc
         return Xc
+
+
+def sample_grid_trilinear(points, grid):
+    """
+    Sample a 3D regular grid with points using triliner interpolation.
+    :param points: A tensor of points with shape [N, 3]. The points must be in [0, W] x [0, H], [0, D]
+    :param grid: A tensor of values with shape [W, H, D, C] consisting of a WxHxD grid with C channels
+    :return: A tensor of shape [N, C] of sampled values for each point
+    """
+    grid_size = [grid.shape[i] - 1.0 for i in range(len(grid.shape) - 1)]
+    pts_reshape = torch.from_numpy(points / np.array(grid_size)).to(grid)
+    pts_reshape -= 0.5
+    pts_reshape *= 2.0
+    pts_reshape = pts_reshape.view(1, 1, 1, pts_reshape.shape[0], pts_reshape.shape[1])  # [1, 1, 1, N, 3]
+    grid_reshape = grid.permute(3, 2, 1, 0).unsqueeze(0)  # [1, C, W, H, D]
+    ret = nnf.grid_sample(grid_reshape, pts_reshape, padding_mode="border", align_corners=False).squeeze().numpy().T
+    return ret
 
 
 def _generate_nystrom_samples(x, num_samples, sampling_method, verbosity_level=1):
