@@ -2,6 +2,7 @@ torch
 scikit-image
 numpy
 scipy
+tqdm
 cupy-cuda111
 git+https://github.com/fwilliams/point-cloud-utils.git@neural-splines
 git+https://github.com/fwilliams/falkon.git@kml
