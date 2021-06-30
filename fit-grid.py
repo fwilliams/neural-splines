@@ -220,7 +220,7 @@ def main():
                  bbox=[b.numpy() for b in scaled_bbox])
 
     # Erode the mask so we don't get weird boundaries
-    eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(np.bool))
+    eroded_mask = binary_erosion(out_mask.numpy().astype(np.bool), np.ones([3, 3, 3]).astype(bool))
     v, f, n, _ = marching_cubes(out_grid.numpy(), level=0.0, mask=eroded_mask, gradient_direction='ascent')
     if c is not None:
         c = sample_grid_trilinear(v, out_color)
