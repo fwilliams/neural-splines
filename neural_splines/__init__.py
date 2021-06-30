@@ -157,9 +157,13 @@ def load_point_cloud(filename, min_norm_normal=1e-5, dtype=torch.float64):
     :return: A pair v, n,  where v is a an [N, 3]-shaped tensor of points, n is a [N, 3]-shaped tensor of unit normals
     """
     v, n, c = pcu.load_mesh_vnc(filename, dtype=np.float64)
+    if n is None:
+        raise ValueError("Point cloud does not contain normals")
+
     v, idx, _ = pcu.deduplicate_point_cloud(v, 1e-15, return_index=True)  # Deduplicate point cloud when loading it
     n = n[idx]
-    c = c[idx]
+    if c is not None:
+        c = c[idx]
 
     # Some meshes have non unit normals, so build a binary mask of points whose normal has a reasonable magnitude
     # We use this mask to remove bad vertices
@@ -269,8 +273,7 @@ def eval_model_on_grid(model, bbox, tx, voxel_grid_size, cell_vox_min=None, cell
 
     ygrid = model.predict(xgrid)
 
-    torch.save((ygrid.detach().cpu(), cell_vox_size.astype(np.int)), "debug-me.pth")
-    if ygrid.shape[-1] > 1:
+    if ygrid.shape[-1] > 1 and len(ygrid.shape) > 1:
         grid_shape = tuple(cell_vox_size.astype(np.int))
         cgrid = torch.stack(
             [ygrid[..., i+1].contiguous().reshape(grid_shape) for i in range(ygrid.shape[-1] - 1)], dim=-1)
