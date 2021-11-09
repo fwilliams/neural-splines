@@ -36,7 +36,7 @@ def main():
     voxel_size = scaled_bbox[1] / out_grid_size  # size of one voxel
 
     print(f"Loading reconstructed mesh {args.mesh}")
-    v, f, n = pcu.load_mesh_vfn(args.mesh)
+    v, f, n, c = pcu.load_mesh_vfnc(args.mesh)
 
     print("Trimming mesh...")
     # Trim distance in world coordinates
@@ -51,7 +51,7 @@ def main():
     f = f[f_mask]
 
     print("Saving trimmed mesh...")
-    pcu.save_mesh_vfn(args.out, v, f, n)
+    pcu.save_mesh_vfnc(args.out, v, f, n, c)
     print("Done!")
 
 

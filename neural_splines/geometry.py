@@ -80,13 +80,14 @@ def scale_bounding_box_diameter(bbox, scale):
     return scaled_bb_min, scaled_bb_size
 
 
-def triple_points_along_normals(x, n, eps, homogeneous=False):
+def triple_points_along_normals(x, n, c, eps, homogeneous=False):
     """
     Convert a point cloud equipped with normals into a point cloud with points pertubed along those normals.
     Each point X with normal N, in the input gets converted to 3 points:
         (X, X+eps*N, X-eps*N) which have occupancy values (0, eps, -eps)
     :param x: The input points of shape [N, 3]
     :param n: The input normals of shape [N, 3]
+    :param c: Optional input colors of shape [N, 3] (RGB) or [N, 4] (RBGA) or None
     :param eps: The amount to perturb points about each normal
     :param homogeneous: If true, return the points in homogeneous coordinates
     :return: A pair, (X, O) consisting of the new point cloud X and point occupancies O
@@ -98,10 +99,15 @@ def triple_points_along_normals(x, n, eps, homogeneous=False):
     occ_triples = torch.cat([torch.zeros(x.shape[0]),
                              -torch.ones(x.shape[0]),
                              torch.ones(x.shape[0])]).to(x) * eps
+    if c is not None:
+        color_triples = torch.cat([c, c, c], dim=0)
+    else:
+        color_triples = None
+
     if homogeneous:
         x_triples = torch.cat([x_triples, torch.ones(x_triples.shape[0], 1, dtype=x_triples.dtype)], dim=-1)
 
-    return x_triples, occ_triples
+    return x_triples, occ_triples, color_triples
 
 
 def voxel_chunks(grid_size, cells_per_axis):
