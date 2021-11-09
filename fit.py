@@ -149,7 +149,11 @@ def main():
         f_mask = np.all(f_mask, axis=-1)
         f = f[f_mask]
 
-    pcu.save_mesh_vfnc(args.out, v.astype(np.float32), f.astype(np.int32), -n.astype(np.float32), c.astype(np.float32))
+    if c is not None:
+        pcu.save_mesh_vfnc(args.out, v.astype(np.float32), f.astype(np.int32),
+                           -n.astype(np.float32), c.astype(np.float32))
+    else:
+        pcu.save_mesh_vfn(args.out, v.astype(np.float32), f.astype(np.int32), -n.astype(np.float32))
     if args.save_grid:
         np.savez(args.out + ".grid", grid=recon_occ.detach().cpu().numpy(), bbox=[b.numpy() for b in scaled_bbox])
 
